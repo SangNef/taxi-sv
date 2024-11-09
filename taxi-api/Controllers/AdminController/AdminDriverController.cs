@@ -16,15 +16,15 @@ namespace taxi_api.Controllers.AdminController
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
-
         [HttpGet("index")]
         public IActionResult Index()
         {
             var drivers = _context.Drivers
-                .Join(_context.Taxies.Where(t => t.InUse == true),
-                    driver => driver.Id, 
+                .GroupJoin(
+                    _context.Taxies.Where(t => t.InUse == true),
+                    driver => driver.Id,
                     taxi => taxi.DriverId,
-                    (driver, taxi) => new 
+                    (driver, taxies) => new
                     {
                         driver.Id,
                         driver.Fullname,
@@ -35,7 +35,7 @@ namespace taxi_api.Controllers.AdminController
                         driver.CreatedAt,
                         driver.UpdatedAt,
                         driver.DeletedAt,
-                        TaxiInfo = new 
+                        TaxiInfo = taxies.Select(taxi => new
                         {
                             taxi.Name,
                             taxi.LicensePlate,
@@ -44,8 +44,10 @@ namespace taxi_api.Controllers.AdminController
                             taxi.CreatedAt,
                             taxi.UpdatedAt,
                             taxi.DeletedAt
-                        }
-                    })
+                        }).ToList(),
+                        Message = taxies.Any() ? null : "driver not available"
+                    }
+                )
                 .ToList();
 
             return Ok(new
@@ -55,6 +57,8 @@ namespace taxi_api.Controllers.AdminController
                 message = "List of all drivers with their taxis retrieved successfully."
             });
         }
+
+
 
         [HttpPost("activate/{driverId}")]
         public IActionResult ActivateDriver(int driverId)

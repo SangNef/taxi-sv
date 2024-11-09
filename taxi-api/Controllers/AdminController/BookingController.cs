@@ -30,10 +30,12 @@ namespace taxi_api.Controllers.AdminController
         [HttpGet("list")]
         public async Task<IActionResult> GetAllBookings()
         {
+            // Sắp xếp bookings theo LIFO (Last-In, First-Out) dựa trên thời gian tạo (CreatedAt)
             var bookings = await _context.Bookings
                 .Include(b => b.Customer)
                 .Include(b => b.Arival)
                 .Include(b => b.BookingDetails)
+                .OrderByDescending(b => b.CreatedAt) // Sắp xếp theo CreatedAt giảm dần
                 .ToListAsync();
 
             if (bookings == null || !bookings.Any())
@@ -143,6 +145,7 @@ namespace taxi_api.Controllers.AdminController
                 message = "Successfully retrieved the list of trips."
             });
         }
+
         [HttpPost("store")]
         public async Task<IActionResult> Store([FromBody] BookingRequestDto request)
         {
@@ -490,21 +493,20 @@ namespace taxi_api.Controllers.AdminController
                         message = "Booking unvalid."
                     });
                 }
-
-                var hasDriverAssigned = await _context.BookingDetails.AnyAsync(bd => bd.BookingId == bookingId);
-                if (hasDriverAssigned)
-                {
-                    return BadRequest(new
+                if(booking.Status == "1")
                     {
-                        code = CommonErrorCodes.InvalidData,
-                        data = (object)null,
-                        message = "The booking cannot be deleted because a driver has already accepted it."
-                    });
-                }
+                    booking.DeletedAt = DateTime.Now;
+                     }
+                    else
+                    {
+                        return BadRequest(new
+                        {
+                            code = CommonErrorCodes.InvalidData,
+                            message = "Unable to delete this booking."
+                        });
+                    }
 
-                // Xoá booking
-                _context.Bookings.Remove(booking);
-                await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
