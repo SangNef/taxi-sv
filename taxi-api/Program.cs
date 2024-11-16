@@ -20,7 +20,6 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
 });
-// Configure PasswordHasher for Driver and Admin
 builder.Services.AddScoped<IPasswordHasher<Driver>, PasswordHasher<Driver>>();
 builder.Services.AddScoped<IPasswordHasher<Admin>, PasswordHasher<Admin>>();
 

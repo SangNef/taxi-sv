@@ -149,38 +149,8 @@ namespace taxi_api.Controllers.DriverController
                 signingCredentials: creds);
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-            var phoneNumber = driver.Phone;
-            if (phoneNumber.StartsWith("0"))
-            {
-                phoneNumber = "+84" + phoneNumber.Substring(1); 
-            }
-            else
-            {
-                phoneNumber = "+" + phoneNumber;
-            }
-            try
-            {
-                TwilioClient.Init(configuation["Twilio:AccountSid"], configuation["Twilio:AuthToken"]);
 
-                var message = MessageResource.Create(
-                    body: "Login successful. Welcome to the Taxi service hê loooooooooooooooooooooooooooooooooo.",
-                    from: new PhoneNumber(configuation["Twilio:PhoneNumber"]),
-                    to: new PhoneNumber(phoneNumber)  
-                );
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    code = CommonErrorCodes.ServerError,
-                    message = "Failed to send SMS.",
-                    error = ex.Message,  // Lấy chi tiết lỗi
-                    stackTrace = ex.StackTrace  // In ra Stack Trace nếu cần
-                });
-            }
-
-
-            return Ok(new { code = CommonErrorCodes.Success, message = "Driver logged in successfully.", token = tokenString , phone = phoneNumber });
+            return Ok(new { code = CommonErrorCodes.Success, message = "Driver logged in successfully.", token = tokenString});
         }
         [HttpPost("create-booking")]
         public async Task<IActionResult> CreateBooking([FromBody] BookingRequestDto request)
@@ -457,7 +427,6 @@ namespace taxi_api.Controllers.DriverController
         [HttpGet("profile")]
         public async Task<IActionResult> GetDriverProfile()
         {
-            // Lấy claim DriverId từ token
             var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId");
             if (driverIdClaim == null)
             {
@@ -476,9 +445,35 @@ namespace taxi_api.Controllers.DriverController
                 });
             }
 
-            // Tìm driver bằng DriverId
-            var driver = await _context.Drivers.FindAsync(driverId);
-            if (driver == null)
+            // Tìm driver bằng DriverId và kết hợp với thông tin xe
+            var driverProfile = await _context.Drivers
+                .Where(d => d.Id == driverId)
+                .GroupJoin(
+                    _context.Taxies.Where(t => t.InUse == true),
+                    driver => driver.Id,
+                    taxi => taxi.DriverId,
+                    (driver, taxies) => new
+                    {
+                        driver.Id,
+                        driver.Fullname,
+                        driver.Phone,
+                        driver.CreatedAt,
+                        driver.UpdatedAt,
+                        TaxiInfo = taxies.Select(taxi => new
+                        {
+                            taxi.Name,
+                            taxi.LicensePlate,
+                            taxi.Seat,
+                            taxi.InUse,
+                            taxi.CreatedAt,
+                            taxi.UpdatedAt
+                        }).ToList(),
+                        Message = taxies.Any() ? null : "There are currently no vehicles available"
+                    }
+                )
+                .FirstOrDefaultAsync();
+
+            if (driverProfile == null)
             {
                 return NotFound(new
                 {
@@ -487,20 +482,11 @@ namespace taxi_api.Controllers.DriverController
                 });
             }
 
-            var profileData = new
-            {
-                driver.Id,
-                driver.Fullname,
-                driver.Phone,
-                driver.CreatedAt,
-                driver.UpdatedAt
-            };
-
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
                 message = "Driver profile retrieved successfully.",
-                data = profileData
+                data = driverProfile
             });
         }
 
