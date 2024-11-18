@@ -17,47 +17,72 @@ namespace taxi_api.Controllers.AdminController
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         [HttpGet("index")]
-        public IActionResult Index()
+        public IActionResult Index(string searchName = null, string searchPhone = null, int page = 1, int pageSize = 10)
         {
-            var drivers = _context.Drivers
-                .GroupJoin(
-                    _context.Taxies.Where(t => t.InUse == true),
-                    driver => driver.Id,
-                    taxi => taxi.DriverId,
-                    (driver, taxies) => new
-                    {
-                        driver.Id,
-                        driver.Fullname,
-                        driver.Phone,
-                        driver.IsActive,
-                        driver.Point,
-                        driver.Commission,
-                        driver.CreatedAt,
-                        driver.UpdatedAt,
-                        driver.DeletedAt,
-                        TaxiInfo = taxies.Select(taxi => new
-                        {
-                            taxi.Name,
-                            taxi.LicensePlate,
-                            taxi.Seat,
-                            taxi.InUse,
-                            taxi.CreatedAt,
-                            taxi.UpdatedAt,
-                            taxi.DeletedAt
-                        }).ToList(),
-                        Message = taxies.Any() ? null : "driver not available"
-                    }
-                )
-                .ToList();
+            // Khởi tạo truy vấn cơ bản để tìm tất cả drivers
+            var query = _context.Drivers.AsQueryable();
 
+            // Tìm kiếm theo tên nếu có
+            if (!string.IsNullOrEmpty(searchName))
+            {
+                query = query.Where(driver => driver.Fullname.Contains(searchName));
+            }
+
+            // Tìm kiếm theo số điện thoại nếu có
+            if (!string.IsNullOrEmpty(searchPhone))
+            {
+                query = query.Where(driver => driver.Phone.Contains(searchPhone));
+            }
+
+            // Thực hiện phân trang
+            var totalDrivers = query.Count(); // Tổng số drivers thỏa mãn điều kiện
+            var drivers = query
+                          .Skip((page - 1) * pageSize) // Bỏ qua các driver ở các trang trước
+                          .Take(pageSize) // Lấy một số lượng driver theo kích thước trang
+                          .GroupJoin(
+                              _context.Taxies.Where(t => t.InUse == true), // Lọc các taxi đang sử dụng
+                              driver => driver.Id,
+                              taxi => taxi.DriverId,
+                              (driver, taxies) => new
+                              {
+                                  driver.Id,
+                                  driver.Fullname,
+                                  driver.Phone,
+                                  driver.IsActive,
+                                  driver.Point,
+                                  driver.Commission,
+                                  driver.CreatedAt,
+                                  driver.UpdatedAt,
+                                  driver.DeletedAt,
+                                  TaxiInfo = taxies.Select(taxi => new
+                                  {
+                                      taxi.Name,
+                                      taxi.LicensePlate,
+                                      taxi.Seat,
+                                      taxi.InUse,
+                                      taxi.CreatedAt,
+                                      taxi.UpdatedAt,
+                                      taxi.DeletedAt
+                                  }).ToList(),
+                                  Message = taxies.Any() ? null : "driver not available"
+                              })
+                          .ToList();
+
+            // Trả về kết quả dưới dạng paginated response
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
+                message = "List of all drivers with their taxis retrieved successfully.",
                 data = drivers,
-                message = "List of all drivers with their taxis retrieved successfully."
+                pagination = new
+                {
+                    totalDrivers,
+                    currentPage = page,
+                    pageSize,
+                    totalPages = (int)Math.Ceiling((double)totalDrivers / pageSize)
+                }
             });
         }
-
 
 
         [HttpPost("activate/{driverId}")]
@@ -111,7 +136,6 @@ namespace taxi_api.Controllers.AdminController
                 message = "Driver account activated successfully."
             });
         }
-
 
         [HttpPost("BanDriver/{driverId}")]
         public IActionResult BanDriver(int driverId)

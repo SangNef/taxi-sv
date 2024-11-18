@@ -17,7 +17,7 @@ namespace taxi_api.DTO
         public string Types { get; set; } 
 
         [Required(ErrorMessage ="Start At is required")] 
-        public DateOnly? StartAt { get; set; }
+        public DateOnly StartAt { get; set; }
         public int? PickUpId { get; set; }
         public string? PickUpAddress { get; set; }
 

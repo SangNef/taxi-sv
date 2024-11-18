@@ -167,5 +167,168 @@ namespace taxi_api.Controllers.AdminController
             });
         }
 
+        [HttpGet("list")]
+        public IActionResult GetAllAdmins(string searchName = null, string role = null, int page = 1, int pageSize = 10)
+        {
+            // Khởi tạo truy vấn cơ bản để tìm tất cả admin
+            var query = _context.Admins.AsQueryable();
+
+            // Tìm kiếm theo tên nếu có
+            if (!string.IsNullOrEmpty(searchName))
+            {
+                query = query.Where(a => a.Name.Contains(searchName));
+            }
+
+            // Tìm kiếm theo role nếu có
+            if (!string.IsNullOrEmpty(role))
+            {
+                query = query.Where(a => a.Role == role);
+            }
+
+            var totalAdmins = query.Count(); // Tổng số admin thỏa mãn điều kiện
+            var admins = query
+                         .Skip((page - 1) * pageSize) // Bỏ qua các admin ở các trang trước
+                         .Take(pageSize) // Lấy một số lượng admin theo kích thước trang
+                         .ToList();
+
+            // Trả về kết quả dưới dạng paginated response
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Admins retrieved successfully.",
+                data = admins,
+                pagination = new
+                {
+                    totalAdmins,
+                    currentPage = page,
+                    pageSize,
+                    totalPages = (int)Math.Ceiling((double)totalAdmins / pageSize)
+                }
+            });
+        }
+
+
+        [Authorize]
+        [HttpPost("create")]
+        public IActionResult CreateAdmin([FromBody] AdminCreateDto adminCreateDto)
+        {
+            if (adminCreateDto == null)
+            {
+                return BadRequest(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Admin creation data is invalid."
+                });
+            }
+
+            // Kiểm tra xem email đã tồn tại trong cơ sở dữ liệu chưa
+            var existingAdmin = _context.Admins.FirstOrDefault(a => a.Email == adminCreateDto.Email);
+            if (existingAdmin != null)
+            {
+                return Conflict(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Email is already in use."
+                });
+            }
+
+            // Mã hóa mật khẩu
+            var hashedPassword = _passwordHasher.HashPassword(null, adminCreateDto.Password);
+
+            // Tạo mới một admin
+            var admin = new Admin
+            {
+                Name = adminCreateDto.Name,
+                Email = adminCreateDto.Email,
+                Phone = adminCreateDto.Phone,
+                Role = "Admin",
+                Password = hashedPassword,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            // Lưu admin vào cơ sở dữ liệu
+            _context.Admins.Add(admin);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Admin created successfully.",
+                data = new
+                {
+                    admin.Id,
+                    admin.Name,
+                    admin.Email,
+                    admin.CreatedAt,
+                    admin.UpdatedAt
+                }
+            });
+        }
+
+        [Authorize]
+        [HttpDelete("delete/{id}")]
+        public IActionResult DeleteAdmin(int id)
+        {
+            // Lấy thông tin AdminId và Role từ token
+            var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
+            if (roleClaim == null)
+            {
+                return Unauthorized(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Role information is missing in the token."
+                });
+            }
+
+            // Kiểm tra xem role có phải là "super admin" không
+            if (roleClaim.Value.ToLower() == "super admin")
+            {
+                return Unauthorized(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Super admin cannot be banned."
+                });
+            }
+
+            var admin = _context.Admins.FirstOrDefault(a => a.Id == id);
+            if (admin == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Admin not found."
+                });
+            }
+
+            // Kiểm tra xem Admin có bị khóa chưa
+            if (admin.DeletedAt == null)
+            {
+                // Nếu Admin chưa bị khóa, đánh dấu DeletedAt với thời gian hiện tại để khóa
+                admin.DeletedAt = DateTime.UtcNow;
+                _context.Admins.Update(admin);
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Admin banned successfully."
+                });
+            }
+            else
+            {
+                // Nếu Admin đã bị khóa, bỏ đánh dấu DeletedAt để mở khóa
+                admin.DeletedAt = null;
+                _context.Admins.Update(admin);
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Admin unbanned successfully."
+                });
+            }
+        }
+
+        //delete tý làm lại
+
     }
 }

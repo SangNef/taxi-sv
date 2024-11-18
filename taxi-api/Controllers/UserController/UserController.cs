@@ -282,7 +282,6 @@ namespace taxi_api.Controllers.UserController
                 }
             }
 
-            // Validate PickUpId and DropOffId
             if (!await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
             {
                 return BadRequest(new
@@ -375,7 +374,7 @@ namespace taxi_api.Controllers.UserController
                 Code = "XG" + DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 CustomerId = customer.Id,
                 ArivalId = arival.Id,
-                StartAt = DateOnly.FromDateTime(DateTime.UtcNow),
+                StartAt = request.StartAt,
                 EndAt = null,
                 Count = request.Count,
                 Price = arival.Price,
@@ -387,35 +386,47 @@ namespace taxi_api.Controllers.UserController
             await _context.Bookings.AddAsync(booking);
             await _context.SaveChangesAsync();
 
-            // Format the customer's phone number
-            var customerPhoneNumber = customer.Phone;
-            if (customerPhoneNumber.StartsWith("0"))
-            {
-                customerPhoneNumber = "+84" + customerPhoneNumber.Substring(1);
-            }
+            var taxi = await FindDriverHelper.FindDriver(booking.Id, 0, _context);
 
-            try
+            if (taxi == null)
             {
-                // Initialize Twilio Client
-                TwilioClient.Init(configuation["Twilio:AccountSid"], configuation["Twilio:AuthToken"]);
-
-                // Send SMS to customer with booking code
-                var message = MessageResource.Create(
-                    body: $"Your booking code is: {booking.Code}.",
-                    from: new PhoneNumber(configuation["Twilio:PhoneNumber"]),
-                    to: new PhoneNumber(customerPhoneNumber)
-                );
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
+                return Ok(new
                 {
-                    code = CommonErrorCodes.ServerError,
-                    message = "Failed to send SMS.",
-                    error = ex.Message,
-                    stackTrace = ex.StackTrace
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Wait for the driver to accept this trip!"
                 });
             }
+
+
+            // Format the customer's phone number
+            //var customerPhoneNumber = customer.Phone;
+            //if (customerPhoneNumber.StartsWith("0"))
+            //{
+            //    customerPhoneNumber = "+84" + customerPhoneNumber.Substring(1);
+            //}
+
+            //try
+            //{
+            //    // Initialize Twilio Client
+            //    TwilioClient.Init(configuation["Twilio:AccountSid"], configuation["Twilio:AuthToken"]);
+
+            //    // Send SMS to customer with booking code
+            //    var message = MessageResource.Create(
+            //        body: $"Your booking code is: {booking.Code}.",
+            //        from: new PhoneNumber(configuation["Twilio:PhoneNumber"]),
+            //        to: new PhoneNumber(customerPhoneNumber)
+            //    );
+            //}
+            //catch (Exception ex)
+            //{
+            //    return StatusCode(500, new
+            //    {
+            //        code = CommonErrorCodes.ServerError,
+            //        message = "Failed to send SMS.",
+            //        error = ex.Message,
+            //        stackTrace = ex.StackTrace
+            //    });
+            //}
 
             return Ok(new
             {

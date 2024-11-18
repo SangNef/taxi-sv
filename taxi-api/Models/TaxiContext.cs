@@ -31,6 +31,8 @@ public partial class TaxiContext : DbContext
 
     public virtual DbSet<Driver> Drivers { get; set; }
 
+    public virtual DbSet<Feedback> Feedbacks { get; set; }
+
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<Page> Pages { get; set; }
@@ -48,8 +50,8 @@ public partial class TaxiContext : DbContext
     public virtual DbSet<Ward> Wards { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Data Source=DESKTOP-UJTQBIQ\\HUUDAO;Initial Catalog=taxi;Integrated Security=True;Encrypt=True;Trust Server Certificate=True");
-
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Data Source=DESKTOP-UJTQBIQ\\HUUDAO;Initial Catalog=Taxi;Integrated Security=True;Encrypt=True;Trust Server Certificate=True");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -77,6 +79,10 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.Phone)
                 .HasMaxLength(50)
                 .HasColumnName("phone");
+            entity.Property(e => e.Role)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("role");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
@@ -142,9 +148,7 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.DeletedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("deleted_at");
-            entity.Property(e => e.EndAt)
-                .HasColumnType("datetime")
-                .HasColumnName("end_at");
+            entity.Property(e => e.EndAt).HasColumnName("end_at");
             entity.Property(e => e.HasFull)
                 .HasDefaultValue(false)
                 .HasColumnName("has_full");
@@ -309,6 +313,36 @@ public partial class TaxiContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
                 .HasColumnName("updated_at");
+        });
+
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Feedback__3213E83FA51714A0");
+
+            entity.ToTable("Feedback");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BookingId).HasColumnName("booking_id");
+            entity.Property(e => e.Comment)
+                .HasMaxLength(1000)
+                .HasColumnName("comment");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeleteAt)
+                .HasDefaultValueSql("(NULL)")
+                .HasColumnType("datetime")
+                .HasColumnName("delete_at");
+            entity.Property(e => e.Rating).HasColumnName("rating");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Booking).WithMany(p => p.Feedbacks)
+                .HasForeignKey(d => d.BookingId)
+                .HasConstraintName("FK__Feedback__bookin__1F98B2C1");
         });
 
         modelBuilder.Entity<Notification>(entity =>

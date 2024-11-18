@@ -20,4 +20,6 @@ public partial class Admin
     public DateTime? UpdatedAt { get; set; }
 
     public DateTime? DeletedAt { get; set; }
+
+    public string? Role { get; set; }
 }

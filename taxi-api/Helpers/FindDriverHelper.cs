@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ namespace taxi_api.Helpers
         {
             // Lấy thông tin booking
             var booking = await context.Bookings
-                .Include(b => b.Arival) // Bao gồm dữ liệu Arival để lấy Type và dropOffId
+                .Include(b => b.Arival)
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             if (booking == null || booking.Arival == null)
@@ -22,79 +23,90 @@ namespace taxi_api.Helpers
 
             var bookingStartDate = booking.StartAt;
             var bookingCount = booking.Count;
-            var dropOffId = booking.Arival.DropOffId; // Lấy dropOffId từ Arival
-            var type = booking.Arival.Type; // Lấy Type từ Arival
+            var dropOffId = booking.Arival.DropOffId;
+            var type = booking.Arival.Type;
 
-            // Bước 1: Lấy danh sách tài xế có xe đang sử dụng và không trùng inviteId
+            // Lấy danh sách tài xế có xe đang sử dụng và không trùng inviteId
             var drivers = await context.Drivers
                 .Include(d => d.Taxies)
-                .Where(d => d.DeletedAt == null && d.Taxies.Any(t => t.InUse == true) && d.Id != inviteId) 
+                .Where(d => d.DeletedAt == null && d.Taxies.Any(t => t.InUse == true) && d.Id != inviteId)
                 .ToListAsync();
 
             if (!drivers.Any())
             {
-                return null; // Không tìm thấy tài xế phù hợp
+                return null; // Không có tài xế phù hợp
             }
 
-            var validDrivers = new List<Driver>();
+            // Danh sách tài xế hợp lệ theo từng ưu tiên
+            var priorityDrivers = new List<Driver>();
 
-            // Bước 2: Lọc tài xế dựa trên chuyến đi tương tự và số ghế
+            // Ưu tiên 1: Tài xế đang có chuyến đi cùng đường và cùng ngày
             foreach (var driver in drivers)
             {
                 var taxi = driver.Taxies.FirstOrDefault();
                 if (taxi != null)
                 {
-                    // Tính tổng số khách đã đặt với tài xế này trong ngày, cùng dropOffId và Type
-                    var totalBookings = await context.BookingDetails
+                    var matchingBookingCount = await context.BookingDetails
                         .Include(bd => bd.Booking)
                         .Where(bd => bd.TaxiId == taxi.Id &&
-                                     bd.Booking.StartAt == bookingStartDate && 
+                                     bd.Booking.StartAt == bookingStartDate &&
                                      bd.Booking.Arival != null &&
                                      bd.Booking.Arival.DropOffId == dropOffId &&
-                                     bd.Booking.Arival.Type == type) // Kiểm tra điều kiện type và dropOffId
+                                     bd.Booking.Arival.Type == type &&
+                                     bd.Status != "3") // Không tính chuyến bị hủy
                         .SumAsync(bd => bd.Booking.Count);
 
-                    // Kiểm tra nếu tổng số khách <= số ghế của taxi
-                    if (totalBookings + bookingCount <= taxi.Seat)
+                    if (matchingBookingCount + bookingCount <= taxi.Seat)
                     {
-                        validDrivers.Add(driver);
+                        priorityDrivers.Add(driver);
                     }
                 }
             }
 
-            // Nếu không tìm thấy tài xế với điều kiện tương tự, chọn ngẫu nhiên tài xế không có chuyến đi trong ngày
-            if (!validDrivers.Any())
+            // Nếu không tìm thấy tài xế trong ưu tiên 1, chuyển sang ưu tiên 2
+            if (!priorityDrivers.Any())
             {
-                validDrivers = drivers.Where(d => !context.BookingDetails
-                    .Any(bd => bd.TaxiId == d.Taxies.FirstOrDefault().Id &&
-                               bd.Booking.StartAt == bookingStartDate)).ToList();
-            }
-
-            if (!validDrivers.Any())
-            {
-                var bookingDetail = new BookingDetail
+                foreach (var driver in drivers)
                 {
-                    BookingId = bookingId,
-                    TaxiId = null,
-                    Status = "0",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    Commission = 0
-                };
+                    var taxi = driver.Taxies.FirstOrDefault();
+                    if (taxi != null)
+                    {
+                        var completedBookingCount = await context.BookingDetails
+                            .Include(bd => bd.Booking)
+                            .Where(bd => bd.TaxiId == taxi.Id &&
+                                         bd.Booking.Status == "4" &&
+                                         bd.Status == "2")
+                            .CountAsync();
 
-                await context.BookingDetails.AddAsync(bookingDetail);
-                await context.SaveChangesAsync();
-
-                return null;
+                        if (completedBookingCount > 0)
+                        {
+                            priorityDrivers.Add(driver);
+                        }
+                    }
+                }
             }
 
-            // Chọn ngẫu nhiên một tài xế từ danh sách hợp lệ
-            var selectedDriver = validDrivers[new Random().Next(validDrivers.Count)];
+            // Nếu không tìm thấy tài xế trong ưu tiên 2, chuyển sang ưu tiên 3
+            if (!priorityDrivers.Any())
+            {
+                priorityDrivers = drivers.Where(d => !context.BookingDetails
+                    .Any(bd => bd.TaxiId == d.Taxies.FirstOrDefault().Id &&
+                               bd.Booking.StartAt == bookingStartDate &&
+                               bd.Status != "3")).ToList();
+            }
+
+            if (!priorityDrivers.Any())
+            {
+                return null; // Không có tài xế nào phù hợp
+            }
+
+            // Chọn ngẫu nhiên một tài xế từ danh sách ưu tiên
+            var selectedDriver = priorityDrivers[new Random().Next(priorityDrivers.Count)];
             var selectedTaxi = selectedDriver.Taxies.FirstOrDefault();
 
             if (selectedTaxi != null)
             {
-                // Lưu thông tin vào BookingDetail với commission từ tài xế
+                // Lưu thông tin vào BookingDetail
                 var bookingDetail = new BookingDetail
                 {
                     BookingId = bookingId,
@@ -102,7 +114,7 @@ namespace taxi_api.Helpers
                     Status = "1", // Trạng thái mới
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Commission = selectedDriver.Commission // Thêm commission từ tài xế được chọn
+                    Commission = selectedDriver.Commission // Thêm commission từ tài xế
                 };
 
                 await context.BookingDetails.AddAsync(bookingDetail);

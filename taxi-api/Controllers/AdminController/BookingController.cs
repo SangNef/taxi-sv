@@ -28,14 +28,53 @@ namespace taxi_api.Controllers.AdminController
         }
 
         [HttpGet("list")]
-        public async Task<IActionResult> GetAllBookings()
+        public async Task<IActionResult> GetAllBookings(
+    [FromQuery] DateOnly? startDate,
+    [FromQuery] DateOnly? endDate,
+    [FromQuery] string? bookingCode,
+    [FromQuery] string? PickUpAddress,
+    [FromQuery] string? DropOffAddress,
+    [FromQuery] string? status,
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10)
         {
-            // Sắp xếp bookings theo LIFO (Last-In, First-Out) dựa trên thời gian tạo (CreatedAt)
-            var bookings = await _context.Bookings
+            var query = _context.Bookings
                 .Include(b => b.Customer)
                 .Include(b => b.Arival)
                 .Include(b => b.BookingDetails)
-                .OrderByDescending(b => b.CreatedAt) // Sắp xếp theo CreatedAt giảm dần
+                .ThenInclude(bd => bd.Taxi)
+                .AsQueryable();
+
+
+
+            // Lọc theo mã đặt chỗ nếu có
+            if (!string.IsNullOrEmpty(bookingCode))
+            {
+                query = query.Where(b => b.Code.Contains(bookingCode));
+            }
+
+            // Lọc theo địa chỉ đón và trả khách
+            if (!string.IsNullOrEmpty(PickUpAddress))
+            {
+                query = query.Where(b => b.Arival.PickUpAddress.Contains(PickUpAddress));
+            }
+            if (!string.IsNullOrEmpty(DropOffAddress))
+            {
+                query = query.Where(b => b.Arival.DropOffAddress.Contains(DropOffAddress));
+            }
+
+            // Lọc theo trạng thái nếu có
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(b => b.Status == status);
+            }
+
+            // Phân trang
+            var totalRecords = await query.CountAsync();
+            var bookings = await query
+                .OrderByDescending(b => b.CreatedAt) // Sắp xếp theo ngày tạo
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             if (bookings == null || !bookings.Any())
@@ -48,103 +87,45 @@ namespace taxi_api.Controllers.AdminController
                 });
             }
 
-            // Lấy tất cả thông tin taxi
-            var taxies = await _context.Taxies.ToListAsync();
-
-            var bookingList = await Task.WhenAll(bookings.Select(async b =>
+            // Chuẩn bị phản hồi
+            var bookingList = bookings.Select(b => new
             {
-                using (var context = new TaxiContext())
+                b.Id,
+                b.Code,
+                CustomerName = b.Customer.Name,
+                b.StartAt,
+                b.EndAt,
+                b.Status,
+                b.Price,
+                b.Count,
+                ArivalDetails = new
                 {
-                    var pickUpWard = await context.Wards
-                        .Where(w => w.Id == b.Arival.PickUpId)
-                        .Include(w => w.District)
-                        .ThenInclude(d => d.Province)
-                        .Select(w => new
-                        {
-                            WardId = w.Id,
-                            WardName = w.Name,
-                            District = new
-                            {
-                                DistrictName = w.District.Name,
-                            },
-                            Province = new
-                            {
-                                ProvinceName = w.District.Province.Name,
-                            }
-                        })
-                        .FirstOrDefaultAsync();
-
-                    var dropOffWard = await context.Wards
-                        .Where(w => w.Id == b.Arival.DropOffId)
-                        .Include(w => w.District)
-                        .ThenInclude(d => d.Province)
-                        .Select(w => new
-                        {
-                            WardId = w.Id,
-                            WardName = w.Name,
-                            District = new
-                            {
-                                DistrictName = w.District.Name,
-                            },
-                            Province = new
-                            {
-                                ProvinceName = w.District.Province.Name,
-                                ProvincePrice = w.District.Province.Price
-                            }
-                        })
-                        .FirstOrDefaultAsync();
-
-                    return new
+                    b.Arival.PickUpAddress,
+                    b.Arival.DropOffAddress
+                },
+                DriverAssignments = b.BookingDetails.Select(bd => new
+                {
+                    bd.TaxiId,
+                    TaxiDetails = bd.Taxi != null ? new
                     {
-                        BookingId = b.Id,
-                        Code = b.Code,
-                        CustomerName = b.Customer?.Name,
-                        CustomerPhone = b.Customer?.Phone,
-                        StartAt = b.StartAt,
-                        EndAt = b.EndAt,
-                        Price = b.Price,
-                        Status = b.Status,
-                        PassengerCount = b.Count,
-                        HasFull = b.HasFull,
-                        InviteId = b.InviteId,
-                        ArivalDetails = new
-                        {
-                            b.Arival.Type,
-                            b.Arival.Price,
-                            PickUpId = b.Arival.PickUpId,
-                            PickUpDetails = pickUpWard,
-                            DropOffId = b.Arival.DropOffId,
-                            DropOffDetails = dropOffWard
-                        },
-                        DriverAssignments = b.BookingDetails.Select(bd => new
-                        {
-                            bd.BookingId,
-                            bd.Status,
-                            bd.TaxiId,
-                            TaxiDetails = taxies.Where(t => t.Id == bd.TaxiId).Select(t => new
-                            {
-                                t.Id,
-                                t.DriverId,
-                                t.Name,
-                                t.LicensePlate,
-                                t.Seat,
-                                t.InUse,
-                                t.CreatedAt,
-                                t.UpdatedAt,
-                                t.DeletedAt
-                            }).FirstOrDefault()
-                        })
-                    };
-                }
-            }));
+                        bd.Taxi.Name,
+                        bd.Taxi.LicensePlate
+                    } : null
+                })
+            });
 
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
-                data = bookingList,
+                data = new
+                {
+                    bookings = bookingList,
+                    totalRecords
+                },
                 message = "Successfully retrieved the list of trips."
             });
         }
+
 
         [HttpPost("store")]
         public async Task<IActionResult> Store([FromBody] BookingRequestDto request)
@@ -220,7 +201,6 @@ namespace taxi_api.Controllers.AdminController
                 }
             }
 
-            // Validate PickUpId and DropOffId
             if (!await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
             {
                 return BadRequest(new
@@ -325,35 +305,47 @@ namespace taxi_api.Controllers.AdminController
             await _context.Bookings.AddAsync(booking);
             await _context.SaveChangesAsync();
 
-            // Format the customer's phone number
-            var customerPhoneNumber = customer.Phone;
-            if (customerPhoneNumber.StartsWith("0"))
-            {
-                customerPhoneNumber = "+84" + customerPhoneNumber.Substring(1);
-            }
+            var taxi = await FindDriverHelper.FindDriver(booking.Id, 0, _context);
 
-            try
+            if (taxi == null)
             {
-                // Initialize Twilio Client
-                TwilioClient.Init(configuation["Twilio:AccountSid"], configuation["Twilio:AuthToken"]);
-
-                // Send SMS to customer with booking code
-                var message = MessageResource.Create(
-                    body: $"Your booking code is: {booking.Code}.",
-                    from: new PhoneNumber(configuation["Twilio:PhoneNumber"]),
-                    to: new PhoneNumber(customerPhoneNumber)
-                );
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
+                return Ok(new
                 {
-                    code = CommonErrorCodes.ServerError,
-                    message = "Failed to send SMS.",
-                    error = ex.Message,
-                    stackTrace = ex.StackTrace
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Wait for the driver to accept this trip!"
                 });
             }
+
+
+            // Format the customer's phone number
+            //var customerPhoneNumber = customer.Phone;
+            //if (customerPhoneNumber.StartsWith("0"))
+            //{
+            //    customerPhoneNumber = "+84" + customerPhoneNumber.Substring(1);
+            //}
+
+            //try
+            //{
+            //    // Initialize Twilio Client
+            //    TwilioClient.Init(configuation["Twilio:AccountSid"], configuation["Twilio:AuthToken"]);
+
+            //    // Send SMS to customer with booking code
+            //    var message = MessageResource.Create(
+            //        body: $"Your booking code is: {booking.Code}.",
+            //        from: new PhoneNumber(configuation["Twilio:PhoneNumber"]),
+            //        to: new PhoneNumber(customerPhoneNumber)
+            //    );
+            //}
+            //catch (Exception ex)
+            //{
+            //    return StatusCode(500, new
+            //    {
+            //        code = CommonErrorCodes.ServerError,
+            //        message = "Failed to send SMS.",
+            //        error = ex.Message,
+            //        stackTrace = ex.StackTrace
+            //    });
+            //}
 
             return Ok(new
             {

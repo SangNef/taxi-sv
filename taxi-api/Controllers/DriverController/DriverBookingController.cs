@@ -180,25 +180,22 @@ namespace taxi_api.Controllers.DriverController
                     .Where(bd => bd.TaxiId == taxi.Id && bd.Status == "2") // chỉ tính các chuyến đang xử lý
                     .SumAsync(bd => bd.Booking.Count);
 
-                if (currentSeatCount + booking.Count > taxi.Seat) // Kiểm tra số ghế vượt mức
+                if (currentSeatCount + booking.Count > taxi.Seat)
                 {
                     return BadRequest(new { message = "The taxi has reached its seat limit for current bookings." });
                 }
 
-                // Bước 5: Kiểm tra và cập nhật trạng thái BookingDetail
                 var existingBookingDetail = await _context.BookingDetails
-                    .Where(bd => bd.BookingId == request.BookingId && bd.Status == "1") // Lấy BookingDetail có Status = 1
+                    .Where(bd => bd.BookingId == request.BookingId && bd.Status == "1")
                     .FirstOrDefaultAsync();
 
                 if (existingBookingDetail != null)
                 {
-                    // Cập nhật trạng thái BookingDetail
                     existingBookingDetail.Status = "2";
                     existingBookingDetail.UpdatedAt = DateTime.UtcNow;
                 }
                 else
                 {
-                    // Nếu chưa có BookingDetail, tạo mới
                     var newBookingDetail = new BookingDetail
                     {
                         BookingId = request.BookingId,
@@ -514,7 +511,6 @@ namespace taxi_api.Controllers.DriverController
 
             var bookingId = cancelBookingDto.BookingId;
 
-            // Lấy booking detail liên quan đến tài xế đang đăng nhập
             var bookingDetail = await _context.BookingDetails
                 .Include(bd => bd.Booking)
                 .FirstOrDefaultAsync(bd => bd.BookingId == bookingId && bd.Taxi.DriverId == driverId);
@@ -527,7 +523,7 @@ namespace taxi_api.Controllers.DriverController
             if (bookingDetail.Booking.Status == "2" && bookingDetail.Status == "2")
             {
                 bookingDetail.Booking.Status = "1"; 
-                bookingDetail.Status = "0";    
+                bookingDetail.Status = "3";    
 
                 _context.BookingDetails.Update(bookingDetail);
                 _context.Bookings.Update(bookingDetail.Booking);

@@ -17,7 +17,7 @@ public partial class Booking
 
     public DateOnly? StartAt { get; set; }
 
-    public DateTime? EndAt { get; set; }
+    public DateOnly? EndAt { get; set; }
 
     public int? Count { get; set; }
 
@@ -38,4 +38,6 @@ public partial class Booking
     public virtual ICollection<BookingDetail> BookingDetails { get; set; } = new List<BookingDetail>();
 
     public virtual Customer? Customer { get; set; }
+
+    public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 }

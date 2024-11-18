@@ -26,6 +26,7 @@ namespace taxi_api.Seeder
                         Name = "Admin",
                         Email = "huudao@example.com",
                         Phone = "0123456789",
+                        Role = "SuperAdmin",
                         DeletedAt = null,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
