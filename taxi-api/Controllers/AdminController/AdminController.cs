@@ -156,7 +156,8 @@ namespace taxi_api.Controllers.AdminController
                 admin.Email,
                 admin.Name,
                 admin.CreatedAt,
-                admin.UpdatedAt
+                admin.UpdatedAt,
+                admin.Role
             };
 
             return Ok(new
@@ -167,6 +168,7 @@ namespace taxi_api.Controllers.AdminController
             });
         }
 
+        [Authorize]
         [HttpGet("list")]
         public IActionResult GetAllAdmins(string searchName = null, string role = null, int page = 1, int pageSize = 10)
         {
@@ -241,8 +243,8 @@ namespace taxi_api.Controllers.AdminController
                 Name = adminCreateDto.Name,
                 Email = adminCreateDto.Email,
                 Phone = adminCreateDto.Phone,
-                Role = "Admin",
                 Password = hashedPassword,
+                Role = AdminRole.Admin.ToString(), 
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -270,29 +272,31 @@ namespace taxi_api.Controllers.AdminController
         [HttpDelete("delete/{id}")]
         public IActionResult DeleteAdmin(int id)
         {
-            // Lấy thông tin AdminId và Role từ token
-            var roleClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
-            if (roleClaim == null)
+            // Lấy thông tin admin hiện tại từ token
+            var adminIdClaim = User.Claims.FirstOrDefault(c => c.Type == "AdminId");
+            if (adminIdClaim == null)
             {
                 return Unauthorized(new
                 {
                     code = CommonErrorCodes.Unauthorized,
-                    message = "Role information is missing in the token."
+                    message = "Invalid token. Admin ID is missing."
                 });
             }
 
-            // Kiểm tra xem role có phải là "super admin" không
-            if (roleClaim.Value.ToLower() == "super admin")
+            // Kiểm tra admin hiện tại có quyền superadmin hay không
+            var currentAdmin = _context.Admins.FirstOrDefault(a => a.Id == int.Parse(adminIdClaim.Value));
+            if (currentAdmin == null || currentAdmin.Role != AdminRole.SuperAdmin.ToString())
             {
                 return Unauthorized(new
                 {
                     code = CommonErrorCodes.Unauthorized,
-                    message = "Super admin cannot be banned."
+                    message = "Only superadmin can delete admins."
                 });
             }
 
-            var admin = _context.Admins.FirstOrDefault(a => a.Id == id);
-            if (admin == null)
+            // Tìm admin cần xóa
+            var adminToDelete = _context.Admins.FirstOrDefault(a => a.Id == id);
+            if (adminToDelete == null)
             {
                 return NotFound(new
                 {
@@ -301,34 +305,35 @@ namespace taxi_api.Controllers.AdminController
                 });
             }
 
-            // Kiểm tra xem Admin có bị khóa chưa
-            if (admin.DeletedAt == null)
+            // Kiểm tra nếu admin cần xóa là superadmin thì không được phép xóa
+            if (adminToDelete.Role == AdminRole.SuperAdmin.ToString())
             {
-                // Nếu Admin chưa bị khóa, đánh dấu DeletedAt với thời gian hiện tại để khóa
-                admin.DeletedAt = DateTime.UtcNow;
-                _context.Admins.Update(admin);
-                _context.SaveChanges();
-                return Ok(new
+                return BadRequest(new
                 {
-                    code = CommonErrorCodes.Success,
-                    message = "Admin banned successfully."
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Superadmin cannot be deleted."
                 });
             }
-            else
+
+            // Cập nhật trường DeletedAt
+            adminToDelete.DeletedAt = DateTime.UtcNow;
+            _context.Admins.Update(adminToDelete);
+            _context.SaveChanges();
+
+            return Ok(new
             {
-                // Nếu Admin đã bị khóa, bỏ đánh dấu DeletedAt để mở khóa
-                admin.DeletedAt = null;
-                _context.Admins.Update(admin);
-                _context.SaveChanges();
-                return Ok(new
+                code = CommonErrorCodes.Success,
+                message = "Admin deleted successfully.",
+                data = new
                 {
-                    code = CommonErrorCodes.Success,
-                    message = "Admin unbanned successfully."
-                });
-            }
+                    adminToDelete.Id,
+                    adminToDelete.Name,
+                    adminToDelete.DeletedAt
+                }
+            });
         }
 
-        //delete tý làm lại
+
 
     }
 }

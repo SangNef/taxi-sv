@@ -62,7 +62,7 @@ namespace taxi_api.Controllers.DriverController
                 Fullname = driverDto.Name,
                 Phone = driverDto.Phone,
                 Password = _passwordHasher.HashPassword(null, driverDto.Password),
-                IsActive = true,
+                IsActive = false,
                 DeletedAt = null,
                 Point = 0,
                 Commission = 0,
@@ -457,6 +457,7 @@ namespace taxi_api.Controllers.DriverController
                         driver.Id,
                         driver.Fullname,
                         driver.Phone,
+                        driver.Point,
                         driver.CreatedAt,
                         driver.UpdatedAt,
                         TaxiInfo = taxies.Select(taxi => new

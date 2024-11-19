@@ -293,10 +293,10 @@ namespace taxi_api.Controllers.DriverController
 
             if (bookings == null || !bookings.Any())
             {
-                return NotFound(new
+                return Ok(new
                 {
-                    code = CommonErrorCodes.NotFound,
-                    data = (object)null,
+                    code = CommonErrorCodes.Success,
+                    data = Array.Empty<object>(),
                     message = "No trips found."
                 });
             }

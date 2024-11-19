@@ -68,7 +68,6 @@ namespace taxi_api.Controllers.AdminController
                               })
                           .ToList();
 
-            // Trả về kết quả dưới dạng paginated response
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
@@ -204,35 +203,6 @@ namespace taxi_api.Controllers.AdminController
             {
                 return StatusCode(500, new { code = CommonErrorCodes.ServerError, message = "Đã xảy ra lỗi trong quá trình lưu dữ liệu." });
             }
-        }
-
-        [HttpGet("get-all-taxis")]
-        public async Task<IActionResult> GetAllTaxis()
-        {
-            var taxis = await _context.Taxies
-                .Join(_context.Drivers, // Join với bảng Drivers
-                    taxi => taxi.DriverId, // Liên kết DriverId của taxi
-                    driver => driver.Id,  // Liên kết với Id của driver
-                    (taxi, driver) => new // Tạo đối tượng kết quả
-                    {
-                        taxi.Id,
-                        taxi.Name,
-                        taxi.LicensePlate,
-                        taxi.Seat,
-                        taxi.InUse,
-                        taxi.CreatedAt,
-                        taxi.UpdatedAt,
-                        taxi.DeletedAt,
-                        Fullname = driver.Fullname // Lấy tên tài xế
-                    })
-                .ToListAsync(); // Dùng ToListAsync() để lấy dữ liệu bất đồng bộ
-
-            return Ok(new
-            {
-                code = CommonErrorCodes.Success,
-                data = taxis,
-                message = "List of all taxis retrieved successfully."
-            });
         }
     }
 }

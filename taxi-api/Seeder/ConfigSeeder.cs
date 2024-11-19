@@ -52,6 +52,14 @@ namespace taxi_api.Seeder
                             Value = "10",
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
+                        },
+                        new Config
+                        {
+                            ConfigKey = "default_royalty",
+                            Name = "default_royalty",
+                            Value = "50",
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
                         }
                     };
 

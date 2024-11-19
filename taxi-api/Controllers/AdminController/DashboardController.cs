@@ -43,17 +43,15 @@ namespace taxi_api.Controllers.AdminController
             var totalDrivers = await _context.Drivers.CountAsync();
 
             // 4. Tổng số khách hàng
-            var totalEmployees = await _context.Customers.CountAsync();
+            var totalCustomers = await _context.Customers.CountAsync();
 
-            // Tổng số nhân viên
-            var totalAdmin = await _context.Admins
-                .Where(a => a.Role == "admin")
-                .CountAsync();
+            // 5. Tổng số đánh giá
+            var totalReviews = await _context.Reviews.CountAsync();
 
-            // 5. Doanh thu và số chuyến trong 6 tháng gần nhất
+            // 6. Doanh thu và số chuyến trong 6 tháng gần nhất
             var revenueLastSixMonths = await _context.Bookings
                 .Where(b => b.StartAt.HasValue && b.StartAt.Value >= startOfSixMonthsAgo)
-                .ToListAsync(); // Lấy dữ liệu về bộ nhớ
+                .ToListAsync();
 
             var revenueAndTripsLastSixMonths = revenueLastSixMonths
                 .GroupBy(b => new { b.StartAt.Value.Year, b.StartAt.Value.Month })
@@ -77,11 +75,13 @@ namespace taxi_api.Controllers.AdminController
                     tripsThisMonth = tripsThisMonthCount,
                     totalRevenueThisMonths = totalRevenueThisMonth,
                     totalDriver = totalDrivers,
-                    totalEmployee = totalEmployees,
+                    totalCustomer = totalCustomers,
+                    totalReviews = totalReviews,  
                     revenueLastSixMonths = revenueAndTripsLastSixMonths
                 },
                 message = "Dashboard data retrieved successfully"
             });
         }
+
     }
 }
