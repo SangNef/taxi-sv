@@ -7,7 +7,7 @@ using taxi_api.Models;
 
 namespace taxi_api.Controllers.AdminController
 {
-    [Route("api/[controller]")]
+    [Route("api/admin")]
     [ApiController]
     public class DashboardController : ControllerBase
     {
@@ -18,8 +18,8 @@ namespace taxi_api.Controllers.AdminController
             _context = context;
         }
 
-        [HttpGet("overview")]
-        public async Task<IActionResult> GetDashboardOverview()
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetDashboard()
         {
             var today = DateOnly.FromDateTime(DateTime.Today); // Chuyển today's DateTime thành DateOnly
             var startOfMonth = new DateOnly(today.Year, today.Month, 1); // Ngày đầu tháng

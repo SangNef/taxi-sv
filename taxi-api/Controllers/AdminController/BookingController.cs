@@ -26,121 +26,121 @@ namespace taxi_api.Controllers.AdminController
             _context = context;
             this.configuation = configuation;
         }
-      [HttpGet("list")]
-public async Task<IActionResult> GetAllBookings(
-    [FromQuery] DateOnly? startDate,
-    [FromQuery] DateOnly? endDate,
-    [FromQuery] string? bookingCode,
-    [FromQuery] string? status,
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 10)
-{
-    // Khởi tạo truy vấn
-    var query = _context.Bookings
-        .Include(b => b.Customer)
-        .Include(b => b.Arival)
-        .Include(b => b.BookingDetails)
-            .ThenInclude(bd => bd.Taxi)
-        .AsQueryable();
-
-    // Lọc theo mã đặt chỗ nếu có
-    if (!string.IsNullOrEmpty(bookingCode))
-    {
-        query = query.Where(b => b.Code.Contains(bookingCode));
-    }
-
-    // Lọc theo trạng thái nếu có
-    if (!string.IsNullOrEmpty(status))
-    {
-        query = query.Where(b => b.Status == status);
-    }
-
-    // Tính tổng số bản ghi
-    var totalRecords = await query.CountAsync();
-
-    if (totalRecords == 0 || page <= 0 || pageSize <= 0)
-    {
-        return Ok(new
-        {
-            code = CommonErrorCodes.Success,
-            data = Array.Empty<object>(),
-            message = "No trips found.",
-            totalRecords,
-            currentPage = page,
-            totalPages = 0
-        });
-    }
-
-    var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
-    var skip = (page - 1) * pageSize;
-
-    var bookings = await query
-        .OrderByDescending(b => b.CreatedAt)
-        .Skip(skip)
-        .Take(pageSize)
-        .ToListAsync();
-
-    var pickUpWardIds = bookings.Select(b => b.Arival.PickUpId).Distinct().ToList();
-    var dropOffWardIds = bookings.Select(b => b.Arival.DropOffId).Distinct().ToList();
-
-    var wards = await _context.Wards
-        .Where(w => pickUpWardIds.Contains(w.Id) || dropOffWardIds.Contains(w.Id))
-        .ToListAsync();
-
-    var districtIds = wards.Select(w => w.DistrictId).Distinct().ToList();
-    var districts = await _context.Districts
-        .Where(d => districtIds.Contains(d.Id))
-        .ToListAsync();
-
-    var provinceIds = districts.Select(d => d.ProvinceId).Distinct().ToList();
-    var provinces = await _context.Provinces
-        .Where(p => provinceIds.Contains(p.Id))
-        .ToListAsync();
-
-    // Chuẩn bị phản hồi
-    var bookingList = bookings.Select(b => new
-    {
-        b.Id,
-        b.Code,
-        CustomerName = b.Customer.Name,
-        b.StartAt,
-        b.EndAt,
-        b.Status,
-        b.Price,
-        b.Count,
-        ArivalDetails = new
-        {
-            b.Arival.PickUpAddress,
-            b.Arival.DropOffAddress,
-            PickUpWardName = wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.Name,
-            PickUpDistrictName = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.Name,
-            PickUpProvinceName = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.ProvinceId)?.Name,
-            DropOffWardName = wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.Name,
-            DropOffDistrictName = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.Name,
-            DropOffProvinceName = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.ProvinceId)?.Name
-        },
-        DriverAssignments = b.BookingDetails.Select(bd => new
-        {
-            bd.TaxiId,
-            TaxiDetails = bd.Taxi != null ? new
+          [HttpGet("list")]
+            public async Task<IActionResult> GetAllBookings(
+                [FromQuery] DateOnly? startDate,
+                [FromQuery] DateOnly? endDate,
+                [FromQuery] string? Code,
+                [FromQuery] string? status,
+                [FromQuery] int page = 1,
+                [FromQuery] int pageSize = 10)
             {
-                bd.Taxi.Name,
-                bd.Taxi.LicensePlate
-            } : null
-        })
-    });
+                // Khởi tạo truy vấn
+                var query = _context.Bookings
+                    .Include(b => b.Customer)
+                    .Include(b => b.Arival)
+                    .Include(b => b.BookingDetails)
+                        .ThenInclude(bd => bd.Taxi)
+                    .AsQueryable();
 
-    // Trả về dữ liệu
-    return Ok(new
-    {
-        code = CommonErrorCodes.Success,
-        data = bookingList,
-        message = "Successfully retrieved the list of trips.",
-        totalRecords,
-        currentPage = page,
-        totalPages
-    });
-}
+                if (!string.IsNullOrEmpty(Code))
+                {
+                    query = query.Where(b => b.Code.Contains(Code));
+                }
+
+                // Lọc theo trạng thái nếu có
+                if (!string.IsNullOrEmpty(status))
+                {
+                    query = query.Where(b => b.Status == status);
+                }
+
+                // Tính tổng số bản ghi
+                var totalRecords = await query.CountAsync();
+
+                if (totalRecords == 0 || page <= 0 || pageSize <= 0)
+                {
+                    return Ok(new
+                    {
+                        code = CommonErrorCodes.Success,
+                        data = Array.Empty<object>(),
+                        message = "No trips found.",
+                        totalRecords,
+                        currentPage = page,
+                        totalPages = 0
+                    });
+                }
+
+                var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+                var skip = (page - 1) * pageSize;
+
+                var bookings = await query
+                    .OrderByDescending(b => b.CreatedAt)
+                    .Skip(skip)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var pickUpWardIds = bookings.Select(b => b.Arival.PickUpId).Distinct().ToList();
+                var dropOffWardIds = bookings.Select(b => b.Arival.DropOffId).Distinct().ToList();
+
+                var wards = await _context.Wards
+                    .Where(w => pickUpWardIds.Contains(w.Id) || dropOffWardIds.Contains(w.Id))
+                    .ToListAsync();
+
+                var districtIds = wards.Select(w => w.DistrictId).Distinct().ToList();
+                var districts = await _context.Districts
+                    .Where(d => districtIds.Contains(d.Id))
+                    .ToListAsync();
+
+                var provinceIds = districts.Select(d => d.ProvinceId).Distinct().ToList();
+                var provinces = await _context.Provinces
+                    .Where(p => provinceIds.Contains(p.Id))
+                    .ToListAsync();
+
+                // Chuẩn bị phản hồi
+                var bookingList = bookings.Select(b => new
+                {
+                    b.Id,
+                    b.Code,
+                    CustomerName = b.Customer.Name,
+                    b.StartAt,
+                    b.EndAt,
+                    b.Status,
+                    b.Price,
+                    b.Count,
+                    ArivalDetails = new
+                    {
+                        b.Arival.PickUpAddress,
+                        b.Arival.DropOffAddress,
+                        b.Arival.Type,
+                        PickUpWard = wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.Name,
+                        PickUpDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.Name,
+                        PickUpProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.ProvinceId)?.Name,
+                        DropOffWard = wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.Name,
+                        DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.Name,
+                        DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.ProvinceId)?.Name
+                    },
+                    BookingDetail = b.BookingDetails.Select(bd => new
+                    {
+                        bd.TaxiId,
+                        TaxiDetails = bd.Taxi != null ? new
+                        {
+                            bd.Taxi.Name,
+                            bd.Taxi.LicensePlate
+                        } : null
+                    })
+                });
+
+                // Trả về dữ liệu
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    data = bookingList,
+                    message = "Successfully retrieved the list of trips.",
+                    totalRecords,
+                    currentPage = page,
+                    totalPages
+                });
+            }
 
 
         [HttpPost("store")]
@@ -178,7 +178,6 @@ public async Task<IActionResult> GetAllBookings(
                 });
             }
 
-            // Validate PickUpId and DropOffId, set from Config if not provided
             if (request.PickUpId == null)
             {
                 var pickupConfig = await _context.Configs
@@ -227,16 +226,6 @@ public async Task<IActionResult> GetAllBookings(
                 });
             }
 
-            if (!await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
-            {
-                return BadRequest(new
-                {
-                    code = CommonErrorCodes.InvalidData,
-                    data = (object)null,
-                    message = "Invalid drop-off point!"
-                });
-            }
-
             // Create Arival and handle pricing
             var arival = new Arival
             {
@@ -252,6 +241,16 @@ public async Task<IActionResult> GetAllBookings(
             if (request.Types == "province")
             {
                 var ward = await _context.Wards.FirstOrDefaultAsync(w => w.Id == request.DropOffId);
+
+                if (!await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
+                {
+                    return BadRequest(new
+                    {
+                        code = CommonErrorCodes.InvalidData,
+                        data = (object)null,
+                        message = "Invalid drop-off point!"
+                    });
+                }
                 if (ward != null)
                 {
                     var district = await _context.Districts.FirstOrDefaultAsync(d => d.Id == ward.DistrictId);
@@ -371,8 +370,8 @@ public async Task<IActionResult> GetAllBookings(
             });
         }
 
-        [HttpDelete("delete/{bookingId}")]
-        public async Task<IActionResult> DeleteBooking(int bookingId)
+        [HttpPut("cancel/{bookingId}")]
+        public async Task<IActionResult> CancelBooking(int bookingId)
             {
                 var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
                 if (booking == null)

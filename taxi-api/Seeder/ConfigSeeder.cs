@@ -49,7 +49,7 @@ namespace taxi_api.Seeder
                         {
                             ConfigKey = "default_comission",
                             Name = "default_commission",
-                            Value = "10",
+                            Value = "30",
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         },

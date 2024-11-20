@@ -9,7 +9,7 @@ public partial class Ward
 
     public string? Name { get; set; }
 
-    public int DistrictId { get; set; }
+    public int? DistrictId { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 

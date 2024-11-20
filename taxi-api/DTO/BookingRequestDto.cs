@@ -8,8 +8,6 @@ namespace taxi_api.DTO
         public string? Name { get; set; }
         public string? Phone { get; set; }
 
-        public int? CustomerId { get; set; } 
-
         [Required(ErrorMessage = "Count is required.")]
         public int Count { get; set; }
 

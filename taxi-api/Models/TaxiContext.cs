@@ -17,6 +17,8 @@ public partial class TaxiContext : DbContext
 
     public virtual DbSet<Admin> Admins { get; set; }
 
+    public virtual DbSet<AdminNotification> AdminNotifications { get; set; }
+
     public virtual DbSet<Arival> Arivals { get; set; }
 
     public virtual DbSet<Booking> Bookings { get; set; }
@@ -31,8 +33,6 @@ public partial class TaxiContext : DbContext
 
     public virtual DbSet<Driver> Drivers { get; set; }
 
-    public virtual DbSet<Feedback> Feedbacks { get; set; }
-
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<Page> Pages { get; set; }
@@ -43,9 +43,15 @@ public partial class TaxiContext : DbContext
 
     public virtual DbSet<Province> Provinces { get; set; }
 
+    public virtual DbSet<Revenue> Revenues { get; set; }
+
     public virtual DbSet<Review> Reviews { get; set; }
 
     public virtual DbSet<Taxy> Taxies { get; set; }
+
+    public virtual DbSet<Ticket> Tickets { get; set; }
+
+    public virtual DbSet<Wallet> Wallets { get; set; }
 
     public virtual DbSet<Ward> Wards { get; set; }
 
@@ -57,7 +63,7 @@ public partial class TaxiContext : DbContext
     {
         modelBuilder.Entity<Admin>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Admins__3213E83F69CBBEDD");
+            entity.HasKey(e => e.Id).HasName("PK__Admins__3213E83F1F7D8E28");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
@@ -81,7 +87,7 @@ public partial class TaxiContext : DbContext
                 .HasColumnName("phone");
             entity.Property(e => e.Role)
                 .HasMaxLength(50)
-                .IsUnicode(false)
+                .HasDefaultValue("Admin")
                 .HasColumnName("role");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -89,9 +95,26 @@ public partial class TaxiContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<AdminNotification>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__AdminNot__3213E83FD2FAE027");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Content)
+                .HasMaxLength(500)
+                .HasColumnName("content");
+            entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.Navigate)
+                .HasMaxLength(500)
+                .HasColumnName("navigate");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .HasColumnName("title");
+        });
+
         modelBuilder.Entity<Arival>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Arivals__3213E83FB796B436");
+            entity.HasKey(e => e.Id).HasName("PK__Arivals__3213E83F00A0CC67");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
@@ -122,16 +145,16 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.DropOff).WithMany(p => p.ArivalDropOffs)
                 .HasForeignKey(d => d.DropOffId)
-                .HasConstraintName("FK__Arivals__drop_of__59FA5E80");
+                .HasConstraintName("FK__Arivals__drop_of__5AEE82B9");
 
             entity.HasOne(d => d.PickUp).WithMany(p => p.ArivalPickUps)
                 .HasForeignKey(d => d.PickUpId)
-                .HasConstraintName("FK__Arivals__pick_up__59063A47");
+                .HasConstraintName("FK__Arivals__pick_up__59FA5E80");
         });
 
         modelBuilder.Entity<Booking>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Bookings__3213E83FD7748462");
+            entity.HasKey(e => e.Id).HasName("PK__Bookings__3213E83FB003A88F");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ArivalId).HasColumnName("arival_id");
@@ -148,7 +171,9 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.DeletedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("deleted_at");
-            entity.Property(e => e.EndAt).HasColumnName("end_at");
+            entity.Property(e => e.EndAt)
+                .HasColumnType("datetime")
+                .HasColumnName("end_at");
             entity.Property(e => e.HasFull)
                 .HasDefaultValue(false)
                 .HasColumnName("has_full");
@@ -167,16 +192,16 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Arival).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.ArivalId)
-                .HasConstraintName("FK__Bookings__arival__60A75C0F");
+                .HasConstraintName("FK__Bookings__arival__619B8048");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.CustomerId)
-                .HasConstraintName("FK__Bookings__custom__5FB337D6");
+                .HasConstraintName("FK__Bookings__custom__60A75C0F");
         });
 
         modelBuilder.Entity<BookingDetail>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BookingD__3213E83F311B10DB");
+            entity.HasKey(e => e.Id).HasName("PK__BookingD__3213E83FC12C39B3");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.BookingId).HasColumnName("booking_id");
@@ -192,6 +217,9 @@ public partial class TaxiContext : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("status");
             entity.Property(e => e.TaxiId).HasColumnName("taxi_id");
+            entity.Property(e => e.TotalPrice)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("total_price");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
@@ -199,16 +227,16 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingDetails)
                 .HasForeignKey(d => d.BookingId)
-                .HasConstraintName("FK__BookingDe__booki__656C112C");
+                .HasConstraintName("FK__BookingDe__booki__66603565");
 
             entity.HasOne(d => d.Taxi).WithMany(p => p.BookingDetails)
                 .HasForeignKey(d => d.TaxiId)
-                .HasConstraintName("FK__BookingDe__taxi___66603565");
+                .HasConstraintName("FK__BookingDe__taxi___6754599E");
         });
 
         modelBuilder.Entity<Config>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Configs__3213E83F0F761DCE");
+            entity.HasKey(e => e.Id).HasName("PK__Configs__3213E83F35B692E8");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ConfigKey)
@@ -233,7 +261,7 @@ public partial class TaxiContext : DbContext
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Customer__3213E83FFA4B1F2A");
+            entity.HasKey(e => e.Id).HasName("PK__Customer__3213E83F6799A4DE");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
@@ -257,7 +285,7 @@ public partial class TaxiContext : DbContext
 
         modelBuilder.Entity<District>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__District__3213E83F2DE6D98E");
+            entity.HasKey(e => e.Id).HasName("PK__District__3213E83F4A366DFE");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -280,12 +308,12 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Province).WithMany(p => p.Districts)
                 .HasForeignKey(d => d.ProvinceId)
-                .HasConstraintName("FK__Districts__provi__4F7CD00D");
+                .HasConstraintName("FK__Districts__provi__5070F446");
         });
 
         modelBuilder.Entity<Driver>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Drivers__3213E83FE3F9F284");
+            entity.HasKey(e => e.Id).HasName("PK__Drivers__3213E83FA28D259C");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Commission).HasColumnName("commission");
@@ -308,46 +336,18 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.Phone)
                 .HasMaxLength(50)
                 .HasColumnName("phone");
-            entity.Property(e => e.Point).HasColumnName("point");
+            entity.Property(e => e.Price)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("price");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
                 .HasColumnName("updated_at");
-        });
-
-        modelBuilder.Entity<Feedback>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__Feedback__3213E83FA51714A0");
-
-            entity.ToTable("Feedback");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.BookingId).HasColumnName("booking_id");
-            entity.Property(e => e.Comment)
-                .HasMaxLength(1000)
-                .HasColumnName("comment");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("created_at");
-            entity.Property(e => e.DeleteAt)
-                .HasDefaultValueSql("(NULL)")
-                .HasColumnType("datetime")
-                .HasColumnName("delete_at");
-            entity.Property(e => e.Rating).HasColumnName("rating");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("updated_at");
-
-            entity.HasOne(d => d.Booking).WithMany(p => p.Feedbacks)
-                .HasForeignKey(d => d.BookingId)
-                .HasConstraintName("FK__Feedback__bookin__1F98B2C1");
         });
 
         modelBuilder.Entity<Notification>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Notifica__3213E83FDE520967");
+            entity.HasKey(e => e.Id).HasName("PK__Notifica__3213E83F89F414FB");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Content)
@@ -372,12 +372,12 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Driver).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.DriverId)
-                .HasConstraintName("FK__Notificat__drive__01142BA1");
+                .HasConstraintName("FK__Notificat__drive__02084FDA");
         });
 
         modelBuilder.Entity<Page>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Pages__3213E83F9E18204A");
+            entity.HasKey(e => e.Id).HasName("PK__Pages__3213E83F39E8DD45");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
@@ -401,7 +401,7 @@ public partial class TaxiContext : DbContext
 
         modelBuilder.Entity<PageContent>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__PageCont__3213E83F9440CD77");
+            entity.HasKey(e => e.Id).HasName("PK__PageCont__3213E83F3DD175C3");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Content)
@@ -425,12 +425,12 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Page).WithMany(p => p.PageContents)
                 .HasForeignKey(d => d.PageId)
-                .HasConstraintName("FK__PageConte__page___778AC167");
+                .HasConstraintName("FK__PageConte__page___787EE5A0");
         });
 
         modelBuilder.Entity<PaymentHistory>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__PaymentH__3213E83F778E9ECE");
+            entity.HasKey(e => e.Id).HasName("PK__PaymentH__3213E83F280C0F87");
 
             entity.ToTable("PaymentHistory");
 
@@ -456,12 +456,12 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Driver).WithMany(p => p.PaymentHistories)
                 .HasForeignKey(d => d.DriverId)
-                .HasConstraintName("FK__PaymentHi__drive__7C4F7684");
+                .HasConstraintName("FK__PaymentHi__drive__7D439ABD");
         });
 
         modelBuilder.Entity<Province>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Province__3213E83FBFBDB4D2");
+            entity.HasKey(e => e.Id).HasName("PK__Province__3213E83F42A408B0");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -485,9 +485,23 @@ public partial class TaxiContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<Revenue>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Revenues__3213E83FC235B181");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Amount)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("amount");
+            entity.Property(e => e.Note)
+                .HasMaxLength(255)
+                .HasColumnName("note");
+            entity.Property(e => e.Type).HasColumnName("type");
+        });
+
         modelBuilder.Entity<Review>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Reviews__3213E83FE4D9BCCC");
+            entity.HasKey(e => e.Id).HasName("PK__Reviews__3213E83FBC4A7FA6");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.BookingDetailId).HasColumnName("booking_detail_id");
@@ -509,12 +523,12 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.BookingDetail).WithMany(p => p.Reviews)
                 .HasForeignKey(d => d.BookingDetailId)
-                .HasConstraintName("FK__Reviews__booking__6B24EA82");
+                .HasConstraintName("FK__Reviews__booking__6C190EBB");
         });
 
         modelBuilder.Entity<Taxy>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Taxies__3213E83F332D1420");
+            entity.HasKey(e => e.Id).HasName("PK__Taxies__3213E83F64DB25AE");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreatedAt)
@@ -542,12 +556,57 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.Driver).WithMany(p => p.Taxies)
                 .HasForeignKey(d => d.DriverId)
-                .HasConstraintName("FK__Taxies__driver_i__4316F928");
+                .HasConstraintName("FK__Taxies__driver_i__440B1D61");
+        });
+
+        modelBuilder.Entity<Ticket>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Tickets__3213E83F05754EE9");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BookingId).HasColumnName("booking_id");
+            entity.Property(e => e.Content)
+                .IsUnicode(false)
+                .HasColumnName("content");
+
+            entity.HasOne(d => d.Booking).WithMany(p => p.Tickets)
+                .HasForeignKey(d => d.BookingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Tickets__booking__09A971A2");
+        });
+
+        modelBuilder.Entity<Wallet>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Wallets__3213E83F6F10A3A1");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("deleted_at");
+            entity.Property(e => e.DriverId).HasColumnName("driver_id");
+            entity.Property(e => e.Price)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("price");
+            entity.Property(e => e.Type)
+                .HasMaxLength(255)
+                .HasColumnName("type");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Driver).WithMany(p => p.Wallets)
+                .HasForeignKey(d => d.DriverId)
+                .HasConstraintName("FK__Wallets__driver___06CD04F7");
         });
 
         modelBuilder.Entity<Ward>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Wards__3213E83F286DBE11");
+            entity.HasKey(e => e.Id).HasName("PK__Wards__3213E83FD39D8BB7");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -570,7 +629,7 @@ public partial class TaxiContext : DbContext
 
             entity.HasOne(d => d.District).WithMany(p => p.Wards)
                 .HasForeignKey(d => d.DistrictId)
-                .HasConstraintName("FK__Wards__district___5441852A");
+                .HasConstraintName("FK__Wards__district___5535A963");
         });
 
         OnModelCreatingPartial(modelBuilder);

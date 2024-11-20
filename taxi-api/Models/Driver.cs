@@ -15,7 +15,7 @@ public partial class Driver
 
     public bool? IsActive { get; set; }
 
-    public int? Point { get; set; }
+    public decimal? Price { get; set; }
 
     public int? Commission { get; set; }
 
@@ -30,4 +30,6 @@ public partial class Driver
     public virtual ICollection<PaymentHistory> PaymentHistories { get; set; } = new List<PaymentHistory>();
 
     public virtual ICollection<Taxy> Taxies { get; set; } = new List<Taxy>();
+
+    public virtual ICollection<Wallet> Wallets { get; set; } = new List<Wallet>();
 }

@@ -170,30 +170,29 @@ namespace taxi_api.Controllers.AdminController
 
         [Authorize]
         [HttpGet("list")]
-        public IActionResult GetAllAdmins(string searchName = null, string role = null, int page = 1, int pageSize = 10)
+        public IActionResult GetAllAdmins(string searchName = null, string role = null, string email = null, int page = 1, int pageSize = 10)
         {
-            // Khởi tạo truy vấn cơ bản để tìm tất cả admin
             var query = _context.Admins.AsQueryable();
 
-            // Tìm kiếm theo tên nếu có
             if (!string.IsNullOrEmpty(searchName))
             {
                 query = query.Where(a => a.Name.Contains(searchName));
             }
 
-            // Tìm kiếm theo role nếu có
             if (!string.IsNullOrEmpty(role))
             {
                 query = query.Where(a => a.Role == role);
             }
 
-            var totalAdmins = query.Count(); // Tổng số admin thỏa mãn điều kiện
+            if (!string.IsNullOrEmpty(email))
+            {
+                query = query.Where(a => a.Email.Contains(email)); 
+            }
+            var totalAdmins = query.Count(); 
             var admins = query
-                         .Skip((page - 1) * pageSize) // Bỏ qua các admin ở các trang trước
-                         .Take(pageSize) // Lấy một số lượng admin theo kích thước trang
+                         .Skip((page - 1) * pageSize) 
+                         .Take(pageSize) 
                          .ToList();
-
-            // Trả về kết quả dưới dạng paginated response
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
@@ -208,8 +207,6 @@ namespace taxi_api.Controllers.AdminController
                 }
             });
         }
-
-
         [Authorize]
         [HttpPost("create")]
         public IActionResult CreateAdmin([FromBody] AdminCreateDto adminCreateDto)

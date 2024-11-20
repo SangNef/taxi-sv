@@ -3,23 +3,21 @@ using System.Collections.Generic;
 
 namespace taxi_api.Models;
 
-public partial class Admin
+public partial class Wallet
 {
     public int Id { get; set; }
 
-    public string? Name { get; set; }
+    public int? DriverId { get; set; }
 
-    public string? Phone { get; set; }
+    public string? Type { get; set; }
 
-    public string? Email { get; set; }
-
-    public string? Role { get; set; }
-
-    public string? Password { get; set; }
+    public decimal? Price { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
     public DateTime? DeletedAt { get; set; }
+
+    public virtual Driver? Driver { get; set; }
 }

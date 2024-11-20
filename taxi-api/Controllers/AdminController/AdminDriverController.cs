@@ -17,30 +17,26 @@ namespace taxi_api.Controllers.AdminController
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         [HttpGet("index")]
-        public IActionResult Index(string searchName = null, string searchPhone = null, int page = 1, int pageSize = 10)
+        public IActionResult Index(string Name = null, string Phone = null, int page = 1, int pageSize = 10)
         {
-            // Khởi tạo truy vấn cơ bản để tìm tất cả drivers
             var query = _context.Drivers.AsQueryable();
 
-            // Tìm kiếm theo tên nếu có
-            if (!string.IsNullOrEmpty(searchName))
+            if (!string.IsNullOrEmpty(Name))
             {
-                query = query.Where(driver => driver.Fullname.Contains(searchName));
+                query = query.Where(driver => driver.Fullname.Contains(Name));
             }
 
-            // Tìm kiếm theo số điện thoại nếu có
-            if (!string.IsNullOrEmpty(searchPhone))
+            if (!string.IsNullOrEmpty(Phone))
             {
-                query = query.Where(driver => driver.Phone.Contains(searchPhone));
+                query = query.Where(driver => driver.Phone.Contains(Phone));
             }
 
-            // Thực hiện phân trang
-            var totalDrivers = query.Count(); // Tổng số drivers thỏa mãn điều kiện
+            var totalDrivers = query.Count(); 
             var drivers = query
-                          .Skip((page - 1) * pageSize) // Bỏ qua các driver ở các trang trước
-                          .Take(pageSize) // Lấy một số lượng driver theo kích thước trang
+                          .Skip((page - 1) * pageSize) 
+                          .Take(pageSize) 
                           .GroupJoin(
-                              _context.Taxies.Where(t => t.InUse == true), // Lọc các taxi đang sử dụng
+                              _context.Taxies.Where(t => t.InUse == true),
                               driver => driver.Id,
                               taxi => taxi.DriverId,
                               (driver, taxies) => new
@@ -49,7 +45,7 @@ namespace taxi_api.Controllers.AdminController
                                   driver.Fullname,
                                   driver.Phone,
                                   driver.IsActive,
-                                  driver.Point,
+                                  driver.Price,
                                   driver.Commission,
                                   driver.CreatedAt,
                                   driver.UpdatedAt,
