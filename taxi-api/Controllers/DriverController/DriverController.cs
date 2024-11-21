@@ -291,5 +291,62 @@ namespace taxi_api.Controllers.DriverController
             });
         }
 
+        [Authorize]
+        [HttpPut("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            if (changePasswordDto == null)
+            {
+                return BadRequest(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Invalid password data."
+                });
+            }
+
+            var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId");
+            if (driverIdClaim == null || !int.TryParse(driverIdClaim.Value, out int driverId))
+            {
+                return Unauthorized(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Invalid token. Driver ID is missing."
+                });
+            }
+
+            var driver = await _context.Drivers.FindAsync(driverId);
+            if (driver == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Driver not found."
+                });
+            }
+
+            var passwordVerificationResult = _passwordHasher.VerifyHashedPassword(driver, driver.Password, changePasswordDto.OldPassword);
+            if (passwordVerificationResult == PasswordVerificationResult.Failed)
+            {
+                return Unauthorized(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Old password is incorrect."
+                });
+            }
+
+            // Cập nhật mật khẩu mới
+            driver.Password = _passwordHasher.HashPassword(driver, changePasswordDto.NewPassword);
+            driver.UpdatedAt = DateTime.Now;
+
+            _context.Drivers.Update(driver);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Password changed successfully."
+            });
+        }
+
     }
 }

@@ -330,7 +330,5 @@ namespace taxi_api.Controllers.AdminController
             });
         }
 
-
-
     }
 }

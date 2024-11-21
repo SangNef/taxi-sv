@@ -5,7 +5,7 @@ using taxi_api.Models;
 
 namespace taxi_api.Controllers.AdminController
 {
-    [Route("api/[controller]")]
+    [Route("api/review")]
     [ApiController]
     public class AdminReviewController : ControllerBase
     {

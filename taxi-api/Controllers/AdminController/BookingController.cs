@@ -313,6 +313,8 @@ namespace taxi_api.Controllers.AdminController
                 Count = request.Count,
                 Price = arival.Price,
                 HasFull = request.HasFull,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
                 Status = "1",
                 InviteId = 0
             };
@@ -407,11 +409,11 @@ namespace taxi_api.Controllers.AdminController
                 });
             }
 
-        [HttpPost("get-booking-by-code")]
-        public async Task<IActionResult> GetBookingByCode([FromBody] BookingCodeRequestDto request)
+        [HttpGet("get-booking-by-code")]
+        public async Task<IActionResult> GetBookingByCode([FromQuery] string code)
         {
-            // Kiểm tra nếu mã code không hợp lệ
-            if (string.IsNullOrEmpty(request.Code))
+            // Kiểm tra nếu mã code không được truyền vào
+            if (string.IsNullOrEmpty(code))
             {
                 return BadRequest(new
                 {
@@ -420,14 +422,16 @@ namespace taxi_api.Controllers.AdminController
                     message = "Code is required."
                 });
             }
+
             // Tìm booking dựa trên mã code
             var booking = await _context.Bookings
                 .Include(b => b.Customer)
                 .Include(b => b.Arival)
                 .Include(b => b.BookingDetails)
                 .ThenInclude(bd => bd.Taxi) // Bao gồm taxi trong booking details
-                .Where(b => b.Code == request.Code)
+                .Where(b => b.Code == code)
                 .FirstOrDefaultAsync();
+
             if (booking == null)
             {
                 return NotFound(new
@@ -437,17 +441,20 @@ namespace taxi_api.Controllers.AdminController
                     message = "Booking not found."
                 });
             }
+
             // Lấy chi tiết pick-up và drop-off ward
             var pickUpWard = await _context.Wards
                 .Where(w => w.Id == booking.Arival.PickUpId)
                 .Include(w => w.District)
                 .ThenInclude(d => d.Province)
                 .FirstOrDefaultAsync();
+
             var dropOffWard = await _context.Wards
                 .Where(w => w.Id == booking.Arival.DropOffId)
                 .Include(w => w.District)
                 .ThenInclude(d => d.Province)
                 .FirstOrDefaultAsync();
+
             // Tạo response cho booking
             var bookingDetails = new
             {
@@ -495,6 +502,7 @@ namespace taxi_api.Controllers.AdminController
                     }
                 })
             };
+
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
@@ -502,5 +510,189 @@ namespace taxi_api.Controllers.AdminController
                 message = "Successfully retrieved the booking details."
             });
         }
+
+
+        //[HttpPut("edit/{id}")]
+        //public async Task<IActionResult> EditBooking(int id, [FromBody] BookingUpDateRequestDto request)
+        //{
+        //    if (request == null)
+        //    {
+        //        return BadRequest(new
+        //        {
+        //            code = CommonErrorCodes.InvalidData,
+        //            data = (object)null,
+        //            message = "Invalid data."
+        //        });
+        //    }
+
+        //    var booking = await _context.Bookings
+        //        .Include(b => b.Customer)
+        //        .Include(b => b.Arival)
+        //        .FirstOrDefaultAsync(b => b.Id == id);
+
+        //    if (booking == null)
+        //    {
+        //        return NotFound(new
+        //        {
+        //            code = CommonErrorCodes.NotFound,
+        //            message = "Booking not found."
+        //        });
+        //    }
+        //    if(booking.Status != "1")
+        //    {
+        //        return Ok(new
+        //        {
+        //            code = CommonErrorCodes.Success,
+        //            message = "Booking not update because status not is 1."
+        //        });
+        //    }
+        //    Customer customer = booking.Customer;
+
+        //    if (!string.IsNullOrEmpty(request.Name) && !string.IsNullOrEmpty(request.Phone))
+        //    {
+        //        customer.Name = request.Name;
+        //        customer.Phone = request.Phone;
+        //        _context.Customers.Update(customer);
+        //    }
+        //    else
+        //    {
+        //        return BadRequest(new
+        //        {
+        //            code = CommonErrorCodes.InvalidData,
+        //            data = (object)null,
+        //            message = "Please select or create a new customer!"
+        //        });
+        //    }
+
+        //    if (request.PickUpId != null && request.PickUpId != booking.Arival.PickUpId)
+        //    {
+        //        var pickupConfig = await _context.Configs
+        //            .FirstOrDefaultAsync(c => c.ConfigKey == "default_arival_pickup");
+        //        if (pickupConfig != null)
+        //        {
+        //            request.PickUpId = int.Parse(pickupConfig.Value);
+        //        }
+        //        else
+        //        {
+        //            return BadRequest(new
+        //            {
+        //                code = CommonErrorCodes.InvalidData,
+        //                data = (object)null,
+        //                message = "Pick-up point configuration not found!"
+        //            });
+        //        }
+        //    }
+
+        //    if (request.DropOffId != null && request.DropOffId != booking.Arival.DropOffId)
+        //    {
+        //        var dropoffConfig = await _context.Configs
+        //            .FirstOrDefaultAsync(c => c.ConfigKey == "default_arival_dropoff");
+        //        if (dropoffConfig != null)
+        //        {
+        //            request.DropOffId = int.Parse(dropoffConfig.Value);
+        //        }
+        //        else
+        //        {
+        //            return BadRequest(new
+        //            {
+        //                code = CommonErrorCodes.InvalidData,
+        //                data = (object)null,
+        //                message = "Drop-off point configuration not found!"
+        //            });
+        //        }
+        //    }
+
+        //    // Check if pick-up and drop-off points are valid
+        //    if (request.PickUpId != null && !await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
+        //    {
+        //        return BadRequest(new
+        //        {
+        //            code = CommonErrorCodes.InvalidData,
+        //            data = (object)null,
+        //            message = "Invalid pick-up point!"
+        //        });
+        //    }
+
+        //    if (request.DropOffId != null && !await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
+        //    {
+        //        return BadRequest(new
+        //        {
+        //            code = CommonErrorCodes.InvalidData,
+        //            data = (object)null,
+        //            message = "Invalid drop-off point!"
+        //        });
+        //    }
+
+        //    // Update Arival and handle pricing
+        //    var arival = booking.Arival;
+
+        //    arival.PickUpId = request.PickUpId ?? arival.PickUpId;
+        //    arival.PickUpAddress = request.PickUpAddress ?? arival.PickUpAddress;
+        //    arival.DropOffId = request.DropOffId ?? arival.DropOffId;
+        //    arival.DropOffAddress = request.DropOffAddress ?? arival.DropOffAddress;
+
+        //    decimal price = 0;
+
+        //    if (request.Types == "province")
+        //    {
+        //        var ward = await _context.Wards.FirstOrDefaultAsync(w => w.Id == request.DropOffId);
+
+        //        if (ward != null)
+        //        {
+        //            var district = await _context.Districts.FirstOrDefaultAsync(d => d.Id == ward.DistrictId);
+        //            if (district != null)
+        //            {
+        //                var province = await _context.Provinces.FirstOrDefaultAsync(p => p.Id == district.ProvinceId);
+        //                if (province != null)
+        //                {
+        //                    price = province.Price.Value;
+        //                }
+        //                else
+        //                {
+        //                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
+        //                }
+        //            }
+        //            else
+        //            {
+        //                return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
+        //            }
+        //        }
+        //        else
+        //        {
+        //            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
+        //        }
+        //    }
+        //    else if (request.Types == "airport")
+        //    {
+        //        var airportConfig = await _context.Configs.FirstOrDefaultAsync(c => c.ConfigKey == "airport_price");
+        //        if (airportConfig != null)
+        //        {
+        //            price = decimal.Parse(airportConfig.Value);
+        //        }
+        //        else
+        //        {
+        //            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
+        //        }
+        //    }
+        //    else
+        //    {
+        //        return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
+        //    }
+
+        //    arival.Price = price;
+
+        //    _context.Arivals.Update(arival);
+        //    _context.Bookings.Update(booking);
+        //    await _context.SaveChangesAsync();
+
+        //    return Ok(new
+        //    {
+        //        code = CommonErrorCodes.Success,
+        //        data = new { bookingId = booking.Id },
+        //        message = "Booking updated successfully!"
+        //    });
+        //}
+
+
     }
 }

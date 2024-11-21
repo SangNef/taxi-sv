@@ -139,5 +139,58 @@ namespace taxi_api.Controllers.AdminController
             }
         }
 
+        [HttpGet("search-location")]
+        public async Task<IActionResult> GetWardInfoByName([FromQuery] string wardName)
+        {
+            if (string.IsNullOrEmpty(wardName))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    data = (object)null,
+                    message = "Ward null ."
+                });
+            }
+
+            var wardInfo = await _context.Wards
+                .Where(w => EF.Functions.Like(w.Name, $"%{wardName}%"))
+                .Include(w => w.District)
+                .ThenInclude(d => d.Province)
+                .Select(w => new
+                {
+                    WardId = w.Id,
+                    WardName = w.Name,
+                    District = new
+                    {
+                        DistrictId = w.District.Id,
+                        DistrictName = w.District.Name,
+                    },
+                    Province = new
+                    {
+                        ProvinceId = w.District.Province.Id,
+                        ProvinceName = w.District.Province.Name,
+                        ProvincePrice = w.District.Province.Price
+                    }
+                })
+                .Take(30)
+                .ToListAsync();
+
+            if (!wardInfo.Any())
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    data = (object)null,
+                    message = "No matching wards found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                data = wardInfo,
+                message = "Success"
+            });
+        }
     }
 }

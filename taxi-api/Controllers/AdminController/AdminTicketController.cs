@@ -5,7 +5,7 @@ using taxi_api.Models;
 
 namespace taxi_api.Controllers.AdminController
 {
-    [Route("api/[controller]")]
+    [Route("api/ticket")]
     [ApiController]
     public class AdminTicketController : ControllerBase
     {
@@ -16,8 +16,8 @@ namespace taxi_api.Controllers.AdminController
             _context = context;
         }
 
-        [HttpGet("list")]
-        public async Task<IActionResult> Index([FromQuery] string Code = null, [FromQuery] string NameOrPhone = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        [HttpGet()]
+        public async Task<IActionResult> Index([FromQuery] string code = null, [FromQuery] string nameOrPhone = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var ticketsQuery = _context.Tickets
                 .Include(t => t.Booking)
@@ -26,17 +26,17 @@ namespace taxi_api.Controllers.AdminController
                 .AsQueryable();
 
             // Tìm kiếm theo BookingCode
-            if (!string.IsNullOrEmpty(Code))
+            if (!string.IsNullOrEmpty(code))
             {
-                ticketsQuery = ticketsQuery.Where(t => t.Booking.Code.Contains(Code));
+                ticketsQuery = ticketsQuery.Where(t => t.Booking.Code.Contains(code));
             }
 
             // Tìm kiếm theo NameOrPhone
-            if (!string.IsNullOrEmpty(NameOrPhone))
+            if (!string.IsNullOrEmpty(nameOrPhone))
             {
                 ticketsQuery = ticketsQuery.Where(t =>
-                    t.Booking.Customer.Name.Contains(NameOrPhone) ||
-                    t.Booking.Customer.Phone.Contains(NameOrPhone));
+                    t.Booking.Customer.Name.Contains(nameOrPhone) ||
+                    t.Booking.Customer.Phone.Contains(nameOrPhone));
             }
 
             // Tính tổng số bản ghi

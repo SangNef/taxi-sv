@@ -17,18 +17,18 @@ namespace taxi_api.Controllers.AdminController
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         [HttpGet("index")]
-        public IActionResult Index(string Name = null, string Phone = null, int status = 0, int page = 1, int pageSize = 10)
+        public IActionResult Index(string name = null, string phone = null, int status = 0, int page = 1, int pageSize = 10)
         {
             var query = _context.Drivers.AsQueryable();
 
-            if (!string.IsNullOrEmpty(Name))
+            if (!string.IsNullOrEmpty(name))
             {
-                query = query.Where(driver => driver.Fullname.Contains(Name));
+                query = query.Where(driver => driver.Fullname.Contains(name));
             }
 
-            if (!string.IsNullOrEmpty(Phone))
+            if (!string.IsNullOrEmpty(phone))
             {
-                query = query.Where(driver => driver.Phone.Contains(Phone));
+                query = query.Where(driver => driver.Phone.Contains(phone));
             }
 
             switch (status)
