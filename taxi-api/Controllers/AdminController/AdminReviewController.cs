@@ -17,25 +17,26 @@ namespace taxi_api.Controllers.AdminController
         }
 
         [HttpGet("list-feedback")]
-        public async Task<IActionResult> ListAllFeedback([FromQuery] string Code = null, [FromQuery] string Name = null, [FromQuery] int? rate = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> ListAllFeedback([FromQuery] string code = null, [FromQuery] string nameOrPhone = null, [FromQuery] int? rate = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            // Truy vấn tất cả các phản hồi (review)
             var feedbackQuery = _context.Reviews
                 .Include(r => r.BookingDetail)
-                .ThenInclude(bd => bd.Booking) // Lấy thông tin Booking
-                .ThenInclude(b => b.Customer)  // Lấy thông tin Customer từ Booking
+                .ThenInclude(bd => bd.Booking)
+                .ThenInclude(b => b.Customer)
                 .AsQueryable();
 
             // Tìm kiếm theo booking code (nếu có)
-            if (!string.IsNullOrEmpty(Code))
+            if (!string.IsNullOrEmpty(code))
             {
-                feedbackQuery = feedbackQuery.Where(r => r.BookingDetail.Booking.Code.Contains(Code));
+                feedbackQuery = feedbackQuery.Where(r => r.BookingDetail.Booking.Code.Contains(code));
             }
 
-            // Tìm kiếm theo customer name (nếu có)
-            if (!string.IsNullOrEmpty(Name))
+            // Tìm kiếm theo customer name hoặc phone (nếu có)
+            if (!string.IsNullOrEmpty(nameOrPhone))
             {
-                feedbackQuery = feedbackQuery.Where(r => r.BookingDetail.Booking.Customer.Name.Contains(Name));
+                feedbackQuery = feedbackQuery.Where(r =>
+                    r.BookingDetail.Booking.Customer.Name.Contains(nameOrPhone) ||
+                    r.BookingDetail.Booking.Customer.Phone.Contains(nameOrPhone));
             }
 
             // Tìm kiếm theo rate (nếu có)
@@ -44,11 +45,10 @@ namespace taxi_api.Controllers.AdminController
                 feedbackQuery = feedbackQuery.Where(r => r.Rate == rate);
             }
 
-            // Phân trang dữ liệu
             var totalRecords = await feedbackQuery.CountAsync();
             var feedbackList = await feedbackQuery
-                .Skip((page - 1) * pageSize) // Bỏ qua các phần tử đã hiển thị
-                .Take(pageSize) // Lấy các phần tử cần thiết
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(r => new
                 {
                     r.Id,
@@ -56,6 +56,7 @@ namespace taxi_api.Controllers.AdminController
                     r.Rate,
                     BookingCode = r.BookingDetail.Booking.Code,
                     CustomerName = r.BookingDetail.Booking.Customer.Name,
+                    CustomerPhone = r.BookingDetail.Booking.Customer.Phone,
                     r.CreatedAt,
                     r.UpdatedAt
                 })
@@ -69,7 +70,7 @@ namespace taxi_api.Controllers.AdminController
                 data = feedbackList,
                 pagination = new
                 {
-                    page,
+                    currentPage = page,
                     pageSize,
                     totalRecords,
                     totalPages = (int)System.Math.Ceiling((double)totalRecords / pageSize)

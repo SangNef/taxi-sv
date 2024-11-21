@@ -17,7 +17,7 @@ namespace taxi_api.Controllers.AdminController
         }
 
         [HttpGet("list")]
-        public async Task<IActionResult> Index([FromQuery] string Code = null, [FromQuery] string Phone = null, [FromQuery] string Name = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> Index([FromQuery] string Code = null, [FromQuery] string NameOrPhone = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var ticketsQuery = _context.Tickets
                 .Include(t => t.Booking)
@@ -31,16 +31,12 @@ namespace taxi_api.Controllers.AdminController
                 ticketsQuery = ticketsQuery.Where(t => t.Booking.Code.Contains(Code));
             }
 
-            // Tìm kiếm theo số điện thoại của customer
-            if (!string.IsNullOrEmpty(Phone))
+            // Tìm kiếm theo NameOrPhone
+            if (!string.IsNullOrEmpty(NameOrPhone))
             {
-                ticketsQuery = ticketsQuery.Where(t => t.Booking.Customer.Phone.Contains(Phone));
-            }
-
-            // Tìm kiếm theo tên của customer
-            if (!string.IsNullOrEmpty(Name))
-            {
-                ticketsQuery = ticketsQuery.Where(t => t.Booking.Customer.Name.Contains(Name));
+                ticketsQuery = ticketsQuery.Where(t =>
+                    t.Booking.Customer.Name.Contains(NameOrPhone) ||
+                    t.Booking.Customer.Phone.Contains(NameOrPhone));
             }
 
             // Tính tổng số bản ghi

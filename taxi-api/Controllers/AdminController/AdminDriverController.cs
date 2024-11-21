@@ -17,7 +17,7 @@ namespace taxi_api.Controllers.AdminController
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         [HttpGet("index")]
-        public IActionResult Index(string Name = null, string Phone = null, int page = 1, int pageSize = 10)
+        public IActionResult Index(string Name = null, string Phone = null, int status = 0, int page = 1, int pageSize = 10)
         {
             var query = _context.Drivers.AsQueryable();
 
@@ -31,10 +31,24 @@ namespace taxi_api.Controllers.AdminController
                 query = query.Where(driver => driver.Phone.Contains(Phone));
             }
 
-            var totalDrivers = query.Count(); 
+            switch (status)
+            {
+                case 1:
+                    query = query.Where(driver => driver.IsActive == true && driver.DeletedAt == null);
+                    break;
+                case 2:
+                    query = query.Where(driver => driver.IsActive == false && driver.DeletedAt == null);
+                    break;
+                case 3:
+                    query = query.Where(driver => driver.IsActive == true && driver.DeletedAt != null);
+                    break;
+            }
+
+            var totalDrivers = query.Count();
+
             var drivers = query
-                          .Skip((page - 1) * pageSize) 
-                          .Take(pageSize) 
+                          .Skip((page - 1) * pageSize)
+                          .Take(pageSize)
                           .GroupJoin(
                               _context.Taxies.Where(t => t.InUse == true),
                               driver => driver.Id,
@@ -78,7 +92,6 @@ namespace taxi_api.Controllers.AdminController
                 }
             });
         }
-
 
         [HttpPost("activate/{driverId}")]
         public IActionResult ActivateDriver(int driverId)

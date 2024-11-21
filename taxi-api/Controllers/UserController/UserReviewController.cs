@@ -29,13 +29,11 @@ namespace taxi_api.Controllers.UserController
                 return BadRequest(new { message = "Review data cannot be null" });
             }
 
-            // Kiểm tra các dữ liệu cần thiết có hợp lệ không
             if (string.IsNullOrWhiteSpace(reviewDto.Review1) || reviewDto.Rate == null || reviewDto.Rate < 1 || reviewDto.Rate > 5)
             {
                 return BadRequest(new { message = "Invalid review or rating" });
             }
 
-            // Kiểm tra trạng thái của booking
             var bookingDetail = await _context.BookingDetails
                 .Include(bd => bd.Booking) 
                 .Where(bd => bd.Id == reviewDto.BookingDetailId)

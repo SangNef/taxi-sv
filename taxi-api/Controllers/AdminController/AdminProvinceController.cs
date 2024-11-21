@@ -83,6 +83,61 @@ namespace taxi_api.Controllers.AdminController
             });
         }
 
+        [HttpPut("update-province-price/{id}")]
+        public IActionResult UpdateProvincePrice(int id, [FromBody] ProvinceDto provinceDto)
+        {
+            // Validate the input
+            if (provinceDto.Price == null || provinceDto.Price <= 0)
+            {
+                return BadRequest(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Price must be provided and greater than 0."
+                });
+            }
+
+            // Find the province by id
+            var province = _context.Provinces.FirstOrDefault(p => p.Id == id);
+            if (province == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Province not found."
+                });
+            }
+
+            // Update the price and updated timestamp
+            province.Price = provinceDto.Price;
+            province.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                // Save changes to the database
+                _context.SaveChanges();
+
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Province price updated successfully.",
+                    data = new
+                    {
+                        province.Id,
+                        province.Name,
+                        province.Price,
+                        province.UpdatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating the province price: {ex.Message}"
+                });
+            }
+        }
 
     }
 }

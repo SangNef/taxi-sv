@@ -24,7 +24,7 @@ namespace taxi_api.Controllers.DriverController
             {
                 return NotFound(new { message = "Booking not found." });
             }
-
+          
             // Tạo đối tượng Ticket mới
             var ticket = new Ticket
             {

@@ -138,7 +138,6 @@ namespace taxi_api.Controllers.DriverController
             }
             return Ok(new { data = bookingList });
         }
-        // POST: api/DriverTaxi/accept-booking
         [Authorize]
         [HttpPost("update-booking")]
         public async Task<IActionResult> UpdateBooking([FromBody] DriverBookingStoreDto request)
@@ -257,8 +256,6 @@ namespace taxi_api.Controllers.DriverController
                 })
             });
         }
-
-
         [Authorize]
         [HttpGet("list-booking-status-1")]
         public async Task<IActionResult> BookingStt1()

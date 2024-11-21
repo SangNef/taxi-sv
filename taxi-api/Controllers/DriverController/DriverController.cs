@@ -237,5 +237,59 @@ namespace taxi_api.Controllers.DriverController
             });
         }
 
+        [Authorize]
+        [HttpPut("edit-profile")]
+        public async Task<IActionResult> EditProfile([FromBody] EditDriverProfileDto editProfileDto)
+        {
+            if (editProfileDto == null)
+            {
+                return BadRequest(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Invalid profile data."
+                });
+            }
+
+            var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId");
+            if (driverIdClaim == null || !int.TryParse(driverIdClaim.Value, out int driverId))
+            {
+                return Unauthorized(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Invalid token. Driver ID is missing."
+                });
+            }
+
+            var driver = await _context.Drivers.FindAsync(driverId);
+            if (driver == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Driver not found."
+                });
+            }
+
+            driver.Fullname = editProfileDto.Fullname ?? driver.Fullname;
+            driver.Phone = editProfileDto.Phone ?? driver.Phone;
+            driver.UpdatedAt = DateTime.Now;
+
+            _context.Drivers.Update(driver);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Profile updated successfully.",
+                data = new
+                {
+                    driver.Id,
+                    driver.Fullname,
+                    driver.Phone,
+                    driver.UpdatedAt
+                }
+            });
+        }
+
     }
 }

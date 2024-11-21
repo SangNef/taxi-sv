@@ -20,7 +20,6 @@ namespace taxi_api.Controllers.AdminController
             _context = context;
         }
 
-        // API lấy giá sân bay
         [HttpGet("get-airport-price")]
         public IActionResult GetAirportPrice()
         {
