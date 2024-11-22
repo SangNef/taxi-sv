@@ -44,7 +44,7 @@ namespace taxi_api.Controllers.UserController
                 return NotFound(new { message = "Booking detail not found" });
             }
 
-            if (bookingDetail.Booking == null || bookingDetail.Booking.Status != "4" && bookingDetail.Status != "2")
+            if (bookingDetail.Booking == null ||  bookingDetail.Status != "4")
             {
                 return BadRequest(new { message = "Review can only be created for booking status 4" });
             }

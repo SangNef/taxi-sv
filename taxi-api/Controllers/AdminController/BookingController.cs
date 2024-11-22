@@ -35,27 +35,29 @@ namespace taxi_api.Controllers.AdminController
                 [FromQuery] int page = 1,
                 [FromQuery] int pageSize = 10)
             {
-                // Khởi tạo truy vấn
-                var query = _context.Bookings
-                    .Include(b => b.Customer)
-                    .Include(b => b.Arival)
-                    .Include(b => b.BookingDetails)
-                        .ThenInclude(bd => bd.Taxi)
-                    .AsQueryable();
+            // Khởi tạo truy vấn
+            var query = _context.Bookings
+            .Where(b => b.DeletedAt != null)
+            .Include(b => b.Customer)
+            .Include(b => b.Arival)
+            .Include(b => b.BookingDetails)
+                .ThenInclude(bd => bd.Taxi)
+            .AsQueryable();
 
-                if (!string.IsNullOrEmpty(Code))
+            if (!string.IsNullOrEmpty(Code))
                 {
                     query = query.Where(b => b.Code.Contains(Code));
                 }
 
-                // Lọc theo trạng thái nếu có
-                if (!string.IsNullOrEmpty(status))
-                {
-                    query = query.Where(b => b.Status == status);
-                }
+            // Lọc theo trạng thái nếu có
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(b => b.BookingDetails.Any(bd => bd.Status == status));
+            }
 
-                // Tính tổng số bản ghi
-                var totalRecords = await query.CountAsync();
+
+            // Tính tổng số bản ghi
+            var totalRecords = await query.CountAsync();
 
                 if (totalRecords == 0 || page <= 0 || pageSize <= 0)
                 {
@@ -104,7 +106,6 @@ namespace taxi_api.Controllers.AdminController
                     CustomerName = b.Customer.Name,
                     b.StartAt,
                     b.EndAt,
-                    b.Status,
                     b.Price,
                     b.Count,
                     ArivalDetails = new
@@ -315,7 +316,6 @@ namespace taxi_api.Controllers.AdminController
                 HasFull = request.HasFull,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Status = "1",
                 InviteId = 0
             };
 
@@ -374,41 +374,44 @@ namespace taxi_api.Controllers.AdminController
 
         [HttpPut("cancel/{bookingId}")]
         public async Task<IActionResult> CancelBooking(int bookingId)
+        {
+            // Tìm Booking dựa trên ID
+            var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
+            if (booking == null)
             {
-                var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
-                if (booking == null)
+                return NotFound(new
                 {
-                    return NotFound(new
+                    code = CommonErrorCodes.NotFound,
+                    data = (object)null,
+                    message = "Booking not valid."
+                });
+            }
+
+            // Lấy danh sách BookingDetail liên quan đến Booking
+            var bookingDetails = await _context.BookingDetails
+                .Where(bd => bd.BookingId == bookingId && bd.Booking.DeletedAt != null)
+                .ToListAsync();
+
+                if (bookingDetails.Any(bd => bd.Status == "2" || bd.Status == "3" || bd.Status == "4"))
+                {
+                    return BadRequest(new
                     {
                         code = CommonErrorCodes.NotFound,
-                        data = (object)null,
-                        message = "Booking unvalid."
+                        message = "Cannot cancel booking with status 2, 3, or 4."
                     });
                 }
-                if(booking.Status == "1")
-                    {
-                    booking.DeletedAt = DateTime.Now;
-                    booking.Status = "5";
-                     }
-                    else
-                    {
-                        return BadRequest(new
-                        {
-                            code = CommonErrorCodes.InvalidData,
-                            message = "Unable to delete this booking."
-                        });
-                    }
 
-            await _context.SaveChangesAsync();
+                booking.DeletedAt = DateTime.Now;
+                await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
                     code = CommonErrorCodes.Success,
-                    data = new { bookingId = booking.Id },
-                    message = "Booking deleted successfully."
+                    data = new { bookingId = booking.Id, updatedDetailsCount = bookingDetails.Count },
+                    message = "Booking canceled and relevant details updated successfully."
                 });
             }
-
+           
         [HttpGet("get-booking-by-code")]
         public async Task<IActionResult> GetBookingByCode([FromQuery] string code)
         {
@@ -465,7 +468,6 @@ namespace taxi_api.Controllers.AdminController
                 StartAt = booking.StartAt,
                 EndAt = booking.EndAt,
                 Price = booking.Price,
-                Status = booking.Status,
                 HasFull = booking.HasFull,
                 ArivalDetails = new
                 {
@@ -484,7 +486,7 @@ namespace taxi_api.Controllers.AdminController
                         ProvinceName = dropOffWard?.District?.Province?.Name,
                     }
                 },
-                DriverAssignments = booking.BookingDetails.Select(bd => new
+                Bookingdetail = booking.BookingDetails.Select(bd => new
                 {
                     bd.BookingId,
                     bd.Status,
@@ -512,9 +514,10 @@ namespace taxi_api.Controllers.AdminController
         }
 
 
-        //[HttpPut("edit/{id}")]
-        //public async Task<IActionResult> EditBooking(int id, [FromBody] BookingUpDateRequestDto request)
+        //[HttpPut("update/{bookingId}")]
+        //public async Task<IActionResult> UpdateBooking(int bookingId, [FromBody] BookingRequestDto request)
         //{
+        //    // Validate the request
         //    if (request == null)
         //    {
         //        return BadRequest(new
@@ -525,12 +528,10 @@ namespace taxi_api.Controllers.AdminController
         //        });
         //    }
 
-        //    var booking = await _context.Bookings
-        //        .Include(b => b.Customer)
-        //        .Include(b => b.Arival)
-        //        .FirstOrDefaultAsync(b => b.Id == id);
+        //    var existingBooking = await _context.Bookings.Include(b => b.Customer).Include(b => b.Arival)
+        //        .FirstOrDefaultAsync(b => b.Id == bookingId);
 
-        //    if (booking == null)
+        //    if (existingBooking == null)
         //    {
         //        return NotFound(new
         //        {
@@ -538,157 +539,66 @@ namespace taxi_api.Controllers.AdminController
         //            message = "Booking not found."
         //        });
         //    }
-        //    if(booking.Status != "1")
+        //    if (existingBooking.Status != "1")
         //    {
-        //        return Ok(new
+        //        return BadRequest(new
         //        {
-        //            code = CommonErrorCodes.Success,
-        //            message = "Booking not update because status not is 1."
+        //            code = CommonErrorCodes.InvalidData,
+        //            message = "Booking cannot be edited because its status is not 1."
         //        });
         //    }
-        //    Customer customer = booking.Customer;
-
         //    if (!string.IsNullOrEmpty(request.Name) && !string.IsNullOrEmpty(request.Phone))
         //    {
-        //        customer.Name = request.Name;
-        //        customer.Phone = request.Phone;
-        //        _context.Customers.Update(customer);
-        //    }
-        //    else
-        //    {
-        //        return BadRequest(new
-        //        {
-        //            code = CommonErrorCodes.InvalidData,
-        //            data = (object)null,
-        //            message = "Please select or create a new customer!"
-        //        });
+        //        existingBooking.Customer.Name = request.Name;
+        //        existingBooking.Customer.Phone = request.Phone;
         //    }
 
-        //    if (request.PickUpId != null && request.PickUpId != booking.Arival.PickUpId)
+        //    if (request.PickUpId != null && request.PickUpId != existingBooking.Arival.PickUpId)
         //    {
-        //        var pickupConfig = await _context.Configs
-        //            .FirstOrDefaultAsync(c => c.ConfigKey == "default_arival_pickup");
-        //        if (pickupConfig != null)
-        //        {
-        //            request.PickUpId = int.Parse(pickupConfig.Value);
-        //        }
-        //        else
+        //        if (!await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
         //        {
         //            return BadRequest(new
         //            {
         //                code = CommonErrorCodes.InvalidData,
         //                data = (object)null,
-        //                message = "Pick-up point configuration not found!"
+        //                message = "Invalid pick-up point!"
         //            });
         //        }
+        //        existingBooking.Arival.PickUpId = request.PickUpId.Value;
+        //        existingBooking.Arival.PickUpAddress = request.PickUpAddress;
         //    }
 
-        //    if (request.DropOffId != null && request.DropOffId != booking.Arival.DropOffId)
+        //    if (request.DropOffId != null && request.DropOffId != existingBooking.Arival.DropOffId)
         //    {
-        //        var dropoffConfig = await _context.Configs
-        //            .FirstOrDefaultAsync(c => c.ConfigKey == "default_arival_dropoff");
-        //        if (dropoffConfig != null)
-        //        {
-        //            request.DropOffId = int.Parse(dropoffConfig.Value);
-        //        }
-        //        else
+        //        if (!await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
         //        {
         //            return BadRequest(new
         //            {
         //                code = CommonErrorCodes.InvalidData,
         //                data = (object)null,
-        //                message = "Drop-off point configuration not found!"
+        //                message = "Invalid drop-off point!"
         //            });
         //        }
+        //        existingBooking.Arival.DropOffId = request.DropOffId.Value;
+        //        existingBooking.Arival.DropOffAddress = request.DropOffAddress;
         //    }
 
-        //    // Check if pick-up and drop-off points are valid
-        //    if (request.PickUpId != null && !await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
+        //    if (request.Types != existingBooking.Arival.Type)
         //    {
-        //        return BadRequest(new
-        //        {
-        //            code = CommonErrorCodes.InvalidData,
-        //            data = (object)null,
-        //            message = "Invalid pick-up point!"
-        //        });
+        //        existingBooking.Arival.Type = request.Types;
         //    }
 
-        //    if (request.DropOffId != null && !await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
-        //    {
-        //        return BadRequest(new
-        //        {
-        //            code = CommonErrorCodes.InvalidData,
-        //            data = (object)null,
-        //            message = "Invalid drop-off point!"
-        //        });
-        //    }
+        //    existingBooking.Count = request.Count;
+        //    existingBooking.HasFull = request.HasFull;
+        //    existingBooking.StartAt = request.StartAt;
 
-        //    // Update Arival and handle pricing
-        //    var arival = booking.Arival;
-
-        //    arival.PickUpId = request.PickUpId ?? arival.PickUpId;
-        //    arival.PickUpAddress = request.PickUpAddress ?? arival.PickUpAddress;
-        //    arival.DropOffId = request.DropOffId ?? arival.DropOffId;
-        //    arival.DropOffAddress = request.DropOffAddress ?? arival.DropOffAddress;
-
-        //    decimal price = 0;
-
-        //    if (request.Types == "province")
-        //    {
-        //        var ward = await _context.Wards.FirstOrDefaultAsync(w => w.Id == request.DropOffId);
-
-        //        if (ward != null)
-        //        {
-        //            var district = await _context.Districts.FirstOrDefaultAsync(d => d.Id == ward.DistrictId);
-        //            if (district != null)
-        //            {
-        //                var province = await _context.Provinces.FirstOrDefaultAsync(p => p.Id == district.ProvinceId);
-        //                if (province != null)
-        //                {
-        //                    price = province.Price.Value;
-        //                }
-        //                else
-        //                {
-        //                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
-        //                }
-        //            }
-        //            else
-        //            {
-        //                return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
-        //            }
-        //        }
-        //        else
-        //        {
-        //            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
-        //        }
-        //    }
-        //    else if (request.Types == "airport")
-        //    {
-        //        var airportConfig = await _context.Configs.FirstOrDefaultAsync(c => c.ConfigKey == "airport_price");
-        //        if (airportConfig != null)
-        //        {
-        //            price = decimal.Parse(airportConfig.Value);
-        //        }
-        //        else
-        //        {
-        //            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
-        //        }
-        //    }
-        //    else
-        //    {
-        //        return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
-        //    }
-
-        //    arival.Price = price;
-
-        //    _context.Arivals.Update(arival);
-        //    _context.Bookings.Update(booking);
+        //    existingBooking.UpdatedAt = DateTime.UtcNow;
+        //    _context.Bookings.Update(existingBooking);
         //    await _context.SaveChangesAsync();
 
         //    return Ok(new
         //    {
         //        code = CommonErrorCodes.Success,
-        //        data = new { bookingId = booking.Id },
         //        message = "Booking updated successfully!"
         //    });
         //}

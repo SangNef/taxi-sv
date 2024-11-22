@@ -24,7 +24,7 @@ namespace taxi_api.Seeder
                     var admin = new Admin
                     {
                         Name = "Admin",
-                        Email = "huudao@example.com",
+                        Email = "Admin@taxi.com",
                         Phone = "0123456789",
                         Role = "SuperAdmin",
                         DeletedAt = null,
@@ -32,7 +32,7 @@ namespace taxi_api.Seeder
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    admin.Password = passwordHasher.HashPassword(admin, "Admin@123");
+                    admin.Password = passwordHasher.HashPassword(admin, "Admin");
 
                     // Thêm admin vào context
                     context.Admins.Add(admin);

@@ -75,7 +75,6 @@ namespace taxi_api.Controllers.AdminController
                 Phone = t.Booking?.Customer?.Phone,
                 t.Booking?.StartAt,
                 t.Booking?.EndAt,
-                t.Booking?.Status,
                 t.Booking?.Price,
                 t.Booking?.Count,
                 Content = t.Content,

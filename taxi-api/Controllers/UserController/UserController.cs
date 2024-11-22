@@ -124,7 +124,6 @@ namespace taxi_api.Controllers.UserController
                     booking.EndAt,
                     booking.Count,
                     booking.Price,
-                    booking.Status,
                     Customer = new
                     {
                         booking.Customer.Name,
@@ -379,7 +378,6 @@ namespace taxi_api.Controllers.UserController
                 Count = request.Count,
                 Price = arival.Price,
                 HasFull = request.HasFull,
-                Status = "1",
                 InviteId = 0
             };
 

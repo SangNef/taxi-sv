@@ -23,8 +23,6 @@ public partial class Booking
 
     public decimal? Price { get; set; }
 
-    public string? Status { get; set; }
-
     public bool? HasFull { get; set; }
 
     public DateTime? CreatedAt { get; set; }
