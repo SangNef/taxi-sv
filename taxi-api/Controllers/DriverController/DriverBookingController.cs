@@ -20,8 +20,8 @@ namespace taxi_api.Controllers.DriverController
         // GET: api/DriverTaxi/get-assigned-bookings
         // Trip from the system
         [Authorize]
-        [HttpGet("booking-status-detail-1")]
-        public async Task<IActionResult> BookingDetailStt1()
+        [HttpGet("current-bookings")]
+        public async Task<IActionResult> CurrentBookings()
         {
             var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId")?.Value;
 
@@ -43,13 +43,13 @@ namespace taxi_api.Controllers.DriverController
                 return NotFound(new { message = "No taxis found for the current driver." });
             }
 
-            // Lấy danh sách BookingDetail có TaxiId thuộc danh sách các Taxi của tài xế
             var bookingDetails = await _context.BookingDetails
-                .Where(bd => bd.Taxi.DriverId == driverId && bd.Status == "1")
-                .Include(bd => bd.Booking) 
-                .Include(bd => bd.Booking.Arival)
-                .Include(bd => bd.Booking.Customer)
-                .ToListAsync();
+                 .Where(bd => bd.Taxi.DriverId == driverId &&
+                              (bd.Status == "1" || bd.Status == "2" || bd.Status == "3"))
+                 .Include(bd => bd.Booking)
+                 .Include(bd => bd.Booking.Arival)
+                 .Include(bd => bd.Booking.Customer)
+                 .ToListAsync();
 
             if (bookingDetails == null || bookingDetails.Count == 0)
             {
@@ -62,7 +62,6 @@ namespace taxi_api.Controllers.DriverController
             {
                 var booking = bd.Booking;
 
-                // Lấy thông tin pickUpWard
                 var pickUpWard = await _context.Wards
                     .Where(w => w.Id == booking.Arival.PickUpId)
                     .Include(w => w.District)
@@ -115,7 +114,9 @@ namespace taxi_api.Controllers.DriverController
                     Count = booking.Count,
                     HasFull = booking.HasFull,
                     InviteId = booking.InviteId,
+                    Status = bd.Status,
                     ArivalDetails = new
+                    
                     {
                         booking.Arival.Type,
                         booking.Arival.Price,
@@ -272,10 +273,8 @@ namespace taxi_api.Controllers.DriverController
                 })
             });
         }
-
-
         [Authorize]
-        [HttpGet("get-status-2-3")]
+        [HttpGet("History-bookings")]
         public async Task<IActionResult> TripAcceptedAndDelete()
         {
             var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId")?.Value;
@@ -298,10 +297,9 @@ namespace taxi_api.Controllers.DriverController
                 return NotFound(new { message = "No taxis found for the current driver." });
             }
 
-            // Sửa điều kiện lấy các BookingDetail với các status là 2, 3, 4, 5
             var bookingDetails = await _context.BookingDetails
                 .Where(bd => bd.Taxi.DriverId == driverId &&
-                             (bd.Status == "2" || bd.Status == "3" || bd.Status == "4" || bd.Status == "5"))
+                             (bd.Status == "4" || bd.Status == "5"))
                 .Include(bd => bd.Booking)
                 .Include(bd => bd.Booking.Arival)
                 .Include(bd => bd.Booking.Customer)
@@ -394,9 +392,8 @@ namespace taxi_api.Controllers.DriverController
             return Ok(new { data = bookingList });
         }
 
-
         [Authorize]
-        [HttpGet("booking-nodriver")]
+        [HttpGet("booking-no-driver")]
         public async Task<IActionResult> GetBookingNoDriver()
         {
             // Lấy danh sách Booking chưa có BookingDetail

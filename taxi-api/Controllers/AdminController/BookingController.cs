@@ -114,42 +114,58 @@ namespace taxi_api.Controllers.AdminController
                 .Where(p => provinceIds.Contains(p.Id))
                 .ToListAsync();
 
-            // Chuẩn bị phản hồi
+            // Truy vấn tất cả các taxi đang InUse và lấy tên tài xế cùng với số điện thoại
+            var driversInUse = await _context.Taxies
+                .Where(t => t.InUse == true)
+                .Select(t => new
+                {
+                    TaxiId = t.Id,          // Lưu TaxiId để tìm lại
+                    DriverName = t.Driver.Fullname,  // Lấy tên tài xế
+                    DriverPhone = t.Driver.Phone // Lấy số điện thoại tài xế
+                })
+                .ToListAsync();
+
+            // Lọc bookingList và thêm DriverName và DriverPhone theo TaxiId
             var bookingList = bookings.Select(b => new
             {
                 b.Id,
                 b.Code,
-                CustomerName = b.Customer.Name,
+                CustomerName = b.Customer?.Name,
                 b.StartAt,
                 b.EndAt,
                 b.Price,
                 b.Count,
-                ArivalDetails = new
-                {
-                    b.Arival.PickUpAddress,
-                    b.Arival.DropOffAddress,
-                    b.Arival.Type,
-                    PickUpWard = wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.Name,
-                    PickUpDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.Name,
-                    PickUpProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.ProvinceId)?.Name,
-                    DropOffWard = wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.Name,
-                    DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.Name,
-                    DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.ProvinceId)?.Name
-                },
-                BookingDetail = b.BookingDetails
-                    .OrderByDescending(bd => bd.UpdatedAt)
-                    .Take(1) // Chỉ lấy BookingDetail mới nhất
-                    .Select(bd => new
-                    {
-                        bd.TaxiId,
-                        TaxiDetails = bd.Taxi != null ? new
-                        {
-                            bd.Taxi.Name,
-                            bd.Taxi.LicensePlate
-                        } : null,
-                        bd.Status
-                    })
-            });
+
+                // Lấy DriverName và DriverPhone từ danh sách driversInUse theo TaxiId
+                DriverName = b.BookingDetails
+                    .Where(bd => bd.Taxi != null && driversInUse.Any(d => d.TaxiId == bd.Taxi.Id)) // Kiểm tra TaxiId có trong danh sách driversInUse
+                    .Select(bd => driversInUse.FirstOrDefault(d => d.TaxiId == bd.Taxi.Id)?.DriverName) // Lấy DriverName của taxi tương ứng
+                    .FirstOrDefault(),
+
+                DriverPhone = b.BookingDetails
+                    .Where(bd => bd.Taxi != null && driversInUse.Any(d => d.TaxiId == bd.Taxi.Id)) // Kiểm tra TaxiId có trong danh sách driversInUse
+                    .Select(bd => driversInUse.FirstOrDefault(d => d.TaxiId == bd.Taxi.Id)?.DriverPhone) // Lấy DriverPhone của taxi tương ứng
+                    .FirstOrDefault(),
+
+                TaxiName = b.BookingDetails.FirstOrDefault()?.Taxi?.Name,
+                LicensePlate = b.BookingDetails.FirstOrDefault()?.Taxi?.LicensePlate,
+
+                Status = b.BookingDetails.FirstOrDefault()?.Status,
+
+                PickUpAddress = b.Arival?.PickUpAddress,
+                DropOffAddress = b.Arival?.DropOffAddress,
+                b.Arival?.Type,
+                PickUpWard = wards.FirstOrDefault(w => w.Id == b.Arival?.PickUpId)?.Name,
+                PickUpDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival?.PickUpId)?.DistrictId)?.Name,
+                PickUpProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival?.PickUpId)?.DistrictId)?.ProvinceId)?.Name,
+                DropOffWard = wards.FirstOrDefault(w => w.Id == b.Arival?.DropOffId)?.Name,
+                DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival?.DropOffId)?.DistrictId)?.Name,
+                DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival?.DropOffId)?.DistrictId)?.ProvinceId)?.Name
+            }).ToList();
+
+
+
+
 
             // Trả về dữ liệu
             return Ok(new
