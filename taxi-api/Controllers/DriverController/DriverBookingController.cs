@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Threading.Tasks;
 using taxi_api.DTO;
 using taxi_api.Helpers;
 using taxi_api.Models;
@@ -420,7 +418,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (!combinedBookings.Any())
             {
-                return NotFound(new { message = "No bookings found matching the criteria." });
+                return Ok(new { message = "No bookings found matching the criteria." });
             }
 
             // Chuẩn bị dữ liệu trả về
@@ -548,143 +546,235 @@ namespace taxi_api.Controllers.DriverController
                     return BadRequest(new { message = "Cannot cancel booking: Invalid status." });
             }
         }
+       
+        [Authorize]
+        [HttpPost("claim-booking")]
+        public async Task<IActionResult> ClaimBooking([FromBody] DriverBookingStoreDto request)
+        {
+            var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId")?.Value;
 
-        //[Authorize]
-        //[HttpPost("claim-booking")]
-        //public async Task<IActionResult> ClaimBooking([FromBody] DriverBookingStoreDto request)
-        //{
-        //    var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId")?.Value;
+            if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
+            {
+                return Unauthorized(new { message = "Unauthorized: Driver ID not found." });
+            }
+            var booking = await _context.Bookings.FindAsync(request.BookingId);
+            if (booking == null)
+            {
+                return NotFound(new { message = "Booking not found." });
+            }
+            var bookingDetails = await _context.BookingDetails
+               .Where(bd => bd.BookingId == request.BookingId )
+               .ToListAsync();
 
-        //    if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
-        //    {
-        //        return Unauthorized(new { message = "Unauthorized: Driver ID not found." });
-        //    }
+            var taxi = await _context.Taxies
+                .Where(t => t.DriverId == driverId && t.InUse == true)
+                .FirstOrDefaultAsync();
 
-        //    var booking = await _context.Bookings.FindAsync(request.BookingId);
-        //    if (booking == null)
-        //    {
-        //        return NotFound(new { message = "Booking not found." });
-        //    }
+            if (taxi == null)
+            {
+                return NotFound(new { message = "No available taxi in use for this driver." });
+            }
 
-        //    var bookingDetails = await _context.BookingDetails
-        //     .Where(bd => bd.BookingId == request.BookingId)
-        //     .ToListAsync();
+            var driver = await _context.Drivers.FindAsync(driverId);
+            if (driver == null)
+            {
+                return NotFound(new { message = "Driver not found." });
+            }
 
-        //    var canceledBookingDetail = bookingDetails.FirstOrDefault(bd => bd.Status == "5" && bd.Taxi.DriverId != driverId);
-        //        if (canceledBookingDetail != null)
-        //        {
-        //            return Ok(new { message = "This booking has been canceled by another driver and is available for rebooking." });
-        //        }
-        //        if (bookingDetails.Any(bd => bd.Status != "1"))
-        //        {
-        //            return BadRequest(new { message = "This booking cannot be requested because some booking details have already been processed or canceled." });
-        //        }
+            decimal commissionRate = driver.Commission.GetValueOrDefault(0);
+            decimal bookingPrice = booking.Price.GetValueOrDefault(0);
+            decimal deduction = (bookingPrice * commissionRate) / 100;
 
-        //    var taxi = await _context.Taxies
-        //        .Where(t => t.DriverId == driverId && t.InUse == true)
-        //        .FirstOrDefaultAsync();
+            driver.Price -= deduction;
 
-        //    if (taxi == null)
-        //    {
-        //        return NotFound(new { message = "No available taxi in use for this driver." });
-        //    }
+            var newWallet = new Wallet
+            {
+                DriverId = driverId,
+                Type = "Successfully received the trip and paid commission.",
+                Price = -deduction,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _context.Wallets.AddAsync(newWallet);
 
-        //    var driver = await _context.Drivers.FindAsync(driverId);
-        //    if (driver == null)
-        //    {
-        //        return NotFound(new { message = "Driver not found." });
-        //    }
-        //    if (driverId == booking.InviteId) {
-        //        return BadRequest(new { message = "The driver cannot claim his trip." });
-        //    }
-        //    //var bookingSystem = await _context.BookingDetails
-        //    //   .Where(bd => bd.Taxi.DriverId == driverId && (bd.Status == "1" || bd.Status == "2"))
-        //    //   .Include(bd => bd.Booking)
-        //    //   .ToListAsync();
-        //    //if (bookingSystem.Count() > 0)
-        //    //{
-        //    //    return BadRequest(new { message = "If you already have a trip from the system, please accept or cancel so you can receive more." });
-        //    //}
-        //    decimal commissionRate = driver.Commission.GetValueOrDefault(0);
-        //    decimal bookingPrice = booking.Price.GetValueOrDefault(0);
-        //    decimal deduction = (bookingPrice * commissionRate) / 100;
+            var adminNotification = new AdminNotification
+            {
+                IsRead = false,
+                Title = $"Driver {driver.Fullname} successfully claimed booking #{booking.Code}",
+                Content = $"Driver {driver.Fullname} has successfully claimed booking #{booking.Code} and a commission of {deduction:C} has been deducted from their wallet.",
+                Navigate = $"/booking/{booking.Code}"
+            };
+            await _context.AdminNotifications.AddAsync(adminNotification);
 
-        //    if (driver.Price.GetValueOrDefault(0) < deduction)
-        //    {
-        //        return BadRequest(new { message = "The driver doesn't have enough money." });
-        //    }
+            if (driver.Price.GetValueOrDefault(0) < (int)deduction)
+            {
+                return BadRequest(new { message = "The driver doesn't have enough money." });
+            }
+            var currentSeatCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId == taxi.Id && bd.Status == "2")
+                .SumAsync(bd => bd.Booking.Count);
 
-        //    driver.Price -= deduction;
+            if (currentSeatCount + booking.Count > taxi.Seat)
+            {
+                return BadRequest(new { message = "The taxi has reached its seat limit for current bookings." });
+            }
 
-        //    var newWallet = new Wallet
-        //    {
-        //        DriverId = driverId,
-        //        Type = "Successfully received the trip and paid commission.",
-        //        Price = -deduction,
-        //        CreatedAt = DateTime.UtcNow
-        //    };
-        //    await _context.Wallets.AddAsync(newWallet);
+            var commission = driver.Commission;
+            if (commission == null)
+            {
+                return NotFound(new { message = "Commission not found for this driver." });
+            }
 
-        //    var adminNotification = new AdminNotification
-        //    {
-        //        IsRead = false,
-        //        Title = $"Driver {driver.Fullname} successfully claimed booking #{booking.Code}",
-        //        Content = $"Driver {driver.Fullname} has successfully claimed booking #{booking.Code} and a commission of {deduction:C} has been deducted from their wallet.",
-        //        Navigate = $"/booking/{booking.Code}"
-        //    };
-        //    await _context.AdminNotifications.AddAsync(adminNotification);
+            // Tạo BookingDetail mới
+            var newBookingDetail = new BookingDetail
+            {
+                BookingId = request.BookingId,
+                TaxiId = taxi.Id,
+                Status = "2",
+                Commission = commission,
+                TotalPrice = booking.Price - deduction,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-        //    var currentSeatCount = await _context.BookingDetails
-        //        .Where(bd => bd.TaxiId == taxi.Id && bd.Status == "2")
-        //        .SumAsync(bd => bd.Booking.Count);
+            await _context.BookingDetails.AddAsync(newBookingDetail);
 
-        //    if (currentSeatCount + booking.Count > taxi.Seat)
-        //    {
-        //        return BadRequest(new { message = "The taxi has reached its seat limit for current bookings." });
-        //    }
+            booking.UpdatedAt = DateTime.UtcNow;
 
-        //    var commission = driver.Commission;
-        //    if (commission == null)
-        //    {
-        //        return NotFound(new { message = "Commission not found for this driver." });
-        //    }
+            await _context.SaveChangesAsync();
 
-        //    // Kiểm tra và cập nhật hoặc tạo mới BookingDetail
-        //    var existingBookingDetail = await _context.BookingDetails
-        //        .FirstOrDefaultAsync(bd => bd.BookingId == request.BookingId);
+            return Ok(new { message = "Booking successfully claimed and status updated to '2'." });
+        }
 
-        //    if (existingBookingDetail != null)
-        //    {
-        //        // Cập nhật nếu đã tồn tại
-        //        existingBookingDetail.TaxiId = taxi.Id;
-        //        existingBookingDetail.Status = "2";
-        //        existingBookingDetail.Commission = commission;
-        //        existingBookingDetail.TotalPrice = booking.Price - deduction;
-        //        existingBookingDetail.UpdatedAt = DateTime.UtcNow;
-        //    }
-        //    else
-        //    {
-        //        // Tạo mới nếu không tìm thấy
-        //        var newBookingDetail = new BookingDetail
-        //        {
-        //            BookingId = request.BookingId,
-        //            TaxiId = taxi.Id,
-        //            Status = "2",
-        //            Commission = commission,
-        //            TotalPrice = booking.Price - deduction,
-        //            CreatedAt = DateTime.UtcNow,
-        //            UpdatedAt = DateTime.UtcNow
-        //        };
+        [Authorize]
+        [HttpPost("update-booking-detail-1")]
+        public async Task<IActionResult> UpdateBookingDetail([FromBody] DriverBookingStoreDto request)
+        {
+            // Lấy DriverId từ Claims
+            var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId")?.Value;
+            if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
+            {
+                return Unauthorized(new { message = "Unauthorized: Driver ID not found." });
+            }
 
-        //        await _context.BookingDetails.AddAsync(newBookingDetail);
-        //    }
+            // Tìm Booking theo BookingId
+            var booking = await _context.Bookings.FindAsync(request.BookingId);
+            if (booking == null)
+            {
+                return Ok(new { message = "Booking not found." });
+            }
 
-        //    // Cập nhật trạng thái của Booking
-        //    booking.UpdatedAt = DateTime.UtcNow;
-        //    await _context.SaveChangesAsync();
+            // Kiểm tra và lấy BookingDetail liên quan đến BookingId
+            var bookingDetail = await _context.BookingDetails
+                .Where(bd => bd.BookingId == request.BookingId)
+                .FirstOrDefaultAsync();
 
-        //    return Ok(new { message = "Booking successfully claimed and status updated to '2'." });
-        //}
+            if (bookingDetail == null)
+            {
+                return Ok(new { message = "BookingDetail not found." });
+            }
+
+            // Chỉ cập nhật nếu trạng thái hiện tại là "1"
+            if (bookingDetail.Status != "1")
+            {
+                return Ok(new { message = "BookingDetail status must be '1' to update." });
+            }
+
+            // Tìm taxi của tài xế
+            var taxi = await _context.Taxies
+                .Where(t => t.DriverId == driverId && t.InUse == true)
+                .FirstOrDefaultAsync();
+
+            if (taxi == null)
+            {
+                return Ok(new { message = "No available taxi in use for this driver." });
+            }
+
+            // Kiểm tra tài xế và xác minh tài xế không nhận chuyến của chính mình
+            var driver = await _context.Drivers.FindAsync(driverId);
+            if (driver == null)
+            {
+                return Ok(new { message = "Driver not found." });
+            }
+
+            if (driverId == booking.InviteId)
+            {
+                return Ok(new { message = "The driver cannot claim his trip." });
+            }
+
+            // Kiểm tra ghế trống trên taxi
+            var currentSeatCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId == taxi.Id && bd.Status == "2")
+                .SumAsync(bd => bd.Booking.Count);
+
+            if (currentSeatCount + booking.Count > taxi.Seat)
+            {
+                return Ok(new { message = "The taxi has reached its seat limit for current bookings." });
+            }
+
+            // Tính toán hoa hồng
+            decimal commissionRate = driver.Commission.GetValueOrDefault(0);
+            decimal bookingPrice = booking.Price.GetValueOrDefault(0);
+            decimal deduction = (bookingPrice * commissionRate) / 100;
+
+            // Kiểm tra ví tài xế
+            if (driver.Price.GetValueOrDefault(0) < deduction)
+            {
+                return Ok(new { message = "The driver doesn't have enough money." });
+            }
+            var commission = driver.Commission;
+            if (commission == null)
+            {
+                return Ok(new { message = "Commission not found for this driver." });
+            }
+            // Trừ tiền từ ví tài xế
+            driver.Price -= deduction;
+
+            var existingBookingDetail = await _context.BookingDetails
+                 .FirstOrDefaultAsync(bd => bd.BookingId == request.BookingId);
+
+            if (existingBookingDetail != null)
+            {
+                // Cập nhật nếu đã tồn tại
+                existingBookingDetail.TaxiId = taxi.Id;
+                existingBookingDetail.Status = "2";
+                existingBookingDetail.Commission = commission;
+                existingBookingDetail.TotalPrice = booking.Price - deduction;
+                existingBookingDetail.UpdatedAt = DateTime.UtcNow;
+            }
+            // Cập nhật thời gian cập nhật Booking
+            booking.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            // Ghi nhận giao dịch vào ví
+            var newWallet = new Wallet
+            {
+                DriverId = driverId,
+                Type = "Successfully updated the booking and paid commission.",
+                Price = -deduction,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _context.Wallets.AddAsync(newWallet);
+
+            var adminNotification = new AdminNotification
+            {
+                IsRead = false,
+                Title = $"Driver {driver.Fullname} updated booking #{booking.Code}",
+                Content = $"Driver {driver.Fullname} has updated booking #{booking.Code} and a commission of {deduction:C} has been deducted from their wallet.",
+                Navigate = $"/booking/{booking.Code}"
+            };
+            await _context.AdminNotifications.AddAsync(adminNotification);
+
+            // Lưu thay đổi vào database
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "BookingDetail successfully updated to '2'.",
+                bookingDetailId = bookingDetail.Id,
+                driverBalance = driver.Price
+            });
+        }
+
         [HttpPost("store")]
         public async Task<IActionResult> Store([FromBody] BookingRequestDto request)
         {

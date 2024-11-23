@@ -17,12 +17,12 @@ namespace taxi_api.Helpers
 
             if (booking == null || booking.Arival == null)
             {
-                return null; // Không tìm thấy booking hoặc Arival
+                return null; 
             }
 
             var bookingStartDate = booking.StartAt;
             var bookingCount = booking.Count;
-            var dropOffId = booking.Arival.DropOffId; // Lấy dropOffId từ Arival
+            var dropOffId = booking.Arival.DropOffId;
             var type = booking.Arival.Type; // Lấy Type từ Arival
 
             // Bước 1: Lấy danh sách tài xế có xe đang sử dụng và không trùng inviteId
@@ -65,11 +65,12 @@ namespace taxi_api.Helpers
                     }
 
                 }
-                if (taxi != null) {
+                if (taxi != null)
+                {
                     var completedBookingCount = await context.BookingDetails
                         .Include(bd => bd.Booking)
                         .Where(bd => bd.TaxiId == taxi.Id &&
-                                     bd.Status == "4") 
+                                     bd.Status == "4")
                         .CountAsync();
 
                     if (completedBookingCount > 0)
@@ -97,14 +98,15 @@ namespace taxi_api.Helpers
 
             if (selectedTaxi != null)
             {
+                // Lưu thông tin vào BookingDetail với commission từ tài xế
                 var bookingDetail = new BookingDetail
                 {
                     BookingId = bookingId,
                     TaxiId = selectedTaxi.Id,
-                    Status = "1", 
+                    Status = "1", // Trạng thái mới
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Commission = selectedDriver.Commission 
+                    Commission = selectedDriver.Commission // Thêm commission từ tài xế được chọn
                 };
 
                 await context.BookingDetails.AddAsync(bookingDetail);
@@ -115,7 +117,6 @@ namespace taxi_api.Helpers
                     DriverId = selectedDriver.Id,
                     Title = "Have a new trip",
                     Content = $"A new trip has been assigned to you. Start time: {booking.StartAt}. Please check and confirm.",
-                    Navigate = $"/booking/{booking.Id}",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     IsRead = false
