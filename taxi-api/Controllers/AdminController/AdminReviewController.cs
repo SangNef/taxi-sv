@@ -23,6 +23,9 @@ namespace taxi_api.Controllers.AdminController
                 .Include(r => r.BookingDetail)
                 .ThenInclude(bd => bd.Booking)
                 .ThenInclude(b => b.Customer)
+                .Include(r => r.BookingDetail)
+                .ThenInclude(bd => bd.Taxi)
+                .ThenInclude(t => t.Driver) // Thêm Include để lấy thông tin tài xế
                 .AsQueryable();
 
             // Tìm kiếm theo booking code (nếu có)
@@ -57,6 +60,10 @@ namespace taxi_api.Controllers.AdminController
                     BookingCode = r.BookingDetail.Booking.Code,
                     CustomerName = r.BookingDetail.Booking.Customer.Name,
                     CustomerPhone = r.BookingDetail.Booking.Customer.Phone,
+                    TaxiName = r.BookingDetail.Taxi.Name, 
+                    TaxiLicensePlate = r.BookingDetail.Taxi.LicensePlate,
+                    DriverName = r.BookingDetail.Taxi.Driver.Fullname, 
+                    DriverPhone = r.BookingDetail.Taxi.Driver.Phone, 
                     r.CreatedAt,
                     r.UpdatedAt
                 })
@@ -77,6 +84,5 @@ namespace taxi_api.Controllers.AdminController
                 }
             });
         }
-
     }
 }

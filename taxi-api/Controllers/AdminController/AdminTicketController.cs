@@ -17,7 +17,13 @@ namespace taxi_api.Controllers.AdminController
         }
 
         [HttpGet()]
-        public async Task<IActionResult> Index([FromQuery] string code = null, [FromQuery] string nameOrPhone = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> Index(
+          [FromQuery] string code = null,
+          [FromQuery] string nameOrPhone = null,
+          [FromQuery] DateTime? startDate = null,
+          [FromQuery] DateTime? endDate = null,   
+          [FromQuery] int page = 1,
+          [FromQuery] int pageSize = 10)
         {
             var ticketsQuery = _context.Tickets
                 .Include(t => t.Booking)
@@ -39,13 +45,24 @@ namespace taxi_api.Controllers.AdminController
                     t.Booking.Customer.Phone.Contains(nameOrPhone));
             }
 
+            // Lọc theo thời gian tạo
+            if (startDate.HasValue)
+            {
+                ticketsQuery = ticketsQuery.Where(t => t.CreatedAt >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                ticketsQuery = ticketsQuery.Where(t => t.CreatedAt <= endDate.Value);
+            }
+
             // Tính tổng số bản ghi
             var totalRecords = await ticketsQuery.CountAsync();
 
             // Phân trang: Skip và Take
             var tickets = await ticketsQuery
-                .Skip((page - 1) * pageSize)  // Bỏ qua các bản ghi của các trang trước
-                .Take(pageSize)              // Lấy các bản ghi trong trang hiện tại
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             // Lấy thông tin liên quan đến địa chỉ (Wards, Districts, Provinces)

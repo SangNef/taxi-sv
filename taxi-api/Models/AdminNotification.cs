@@ -14,4 +14,10 @@ public partial class AdminNotification
     public string? Content { get; set; }
 
     public string? Navigate { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
 }

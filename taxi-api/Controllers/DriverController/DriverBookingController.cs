@@ -1024,5 +1024,123 @@ namespace taxi_api.Controllers.DriverController
             });
         }
 
+        [Authorize]
+        [HttpGet("get-booking/{bookingId}")]
+        public async Task<IActionResult> GetBookingByIdForDriver(int bookingId)
+        {
+            // Lấy DriverId từ claims của tài xế
+            var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId")?.Value;
+
+            if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
+            {
+                return Unauthorized(new { message = "Unauthorized: Driver ID not found." });
+            }
+
+            var booking = await _context.Bookings
+                  .Where(b => b.Id == bookingId)
+                  .Include(b => b.Arival)
+                  .ThenInclude(a => a.PickUp) 
+                      .ThenInclude(w => w.District)
+                      .ThenInclude(d => d.Province) 
+                  .Include(b => b.BookingDetails) 
+                  .ThenInclude(bd => bd.Taxi) 
+                  .FirstOrDefaultAsync();
+
+
+            if (booking == null)
+            {
+                return NotFound(new { message = "Booking not found." });
+            }
+
+            // Kiểm tra nếu tài xế có liên quan đến Booking này
+            var bookingDetail = booking.BookingDetails.FirstOrDefault(bd => bd.Taxi.DriverId == driverId);
+            if (bookingDetail == null)
+            {
+                return BadRequest(new { message = "This booking is not assigned to this driver." });
+            }
+
+            // Lấy thông tin pickUpWard
+            var pickUpWard = await _context.Wards
+                .Where(w => w.Id == booking.Arival.PickUpId)
+                .Include(w => w.District)
+                .ThenInclude(d => d.Province)
+                .Select(w => new
+                {
+                    WardId = w.Id,
+                    WardName = w.Name,
+                    District = new
+                    {
+                        DistrictName = w.District.Name,
+                    },
+                    Province = new
+                    {
+                        ProvinceName = w.District.Province.Name,
+                    }
+                })
+                .FirstOrDefaultAsync();
+
+            // Lấy thông tin dropOffWard
+            var dropOffWard = await _context.Wards
+                .Where(w => w.Id == booking.Arival.DropOffId)
+                .Include(w => w.District)
+                .ThenInclude(d => d.Province)
+                .Select(w => new
+                {
+                    WardId = w.Id,
+                    WardName = w.Name,
+                    District = new
+                    {
+                        DistrictName = w.District.Name,
+                    },
+                    Province = new
+                    {
+                        ProvinceName = w.District.Province.Name,
+                    }
+                })
+                .FirstOrDefaultAsync();
+
+            // Chuẩn bị thông tin trả về
+            var bookingInfo = new
+            {
+                BookingId = booking.Id,
+                BookingCode = booking.Code,
+                Price = booking.Price,
+                CustomerName = booking.Customer?.Name,
+                CustomerPhone = booking.Customer?.Phone,
+                StartAt = booking.StartAt,
+                EndAt = booking.EndAt,
+                Count = booking.Count,
+                HasFull = booking.HasFull,
+                InviteId = booking.InviteId,
+                ArivalDetails = new
+                {
+                    booking.Arival.Type,
+                    booking.Arival.Price,
+                    PickUpId = booking.Arival.PickUpId,
+                    PickUpDetails = pickUpWard,
+                    DropOffId = booking.Arival.DropOffId,
+                    DropOffDetails = dropOffWard
+                },
+                TaxiDetails = new
+                {
+                    TaxiId = bookingDetail.Taxi.Id,
+                    TaxiName = bookingDetail.Taxi.Name,
+                    TaxiLicensePlate = bookingDetail.Taxi.LicensePlate,
+                    TaxiSeat = bookingDetail.Taxi.Seat
+                },
+                BookingDetails = booking.BookingDetails.Select(bd => new
+                {
+                    BookingDetailId = bd.Id,
+                    Status = bd.Status,
+                    Commission = bd.Commission,
+                    TotalPrice = bd.TotalPrice,
+                    CreatedAt = bd.CreatedAt
+                }).ToList()
+            };
+
+            return Ok(new { data = bookingInfo });
+        }
+
+
     }
 }

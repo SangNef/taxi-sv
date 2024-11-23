@@ -11,5 +11,11 @@ public partial class Ticket
 
     public string? Content { get; set; }
 
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
+
     public virtual Booking Booking { get; set; } = null!;
 }

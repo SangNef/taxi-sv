@@ -28,19 +28,19 @@ namespace taxi_api.Controllers.AdminController
         }
         [HttpGet("list")]
         public async Task<IActionResult> GetAllBookings(
-            [FromQuery] string? Code,
-            [FromQuery] string? status,
-            [FromQuery] DateOnly? fromDate, 
-            [FromQuery] DateOnly? toDate,   
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
+       [FromQuery] string? Code,
+       [FromQuery] string? status,
+       [FromQuery] DateOnly? fromDate,
+       [FromQuery] DateOnly? toDate,
+       [FromQuery] int page = 1,
+       [FromQuery] int pageSize = 10)
         {
             // Khởi tạo truy vấn
             var query = _context.Bookings
-                .Where(b => b.DeletedAt == null) 
+                .Where(b => b.DeletedAt == null)
                 .Include(b => b.Customer)
                 .Include(b => b.Arival)
-                .Include(b => b.BookingDetails) 
+                .Include(b => b.BookingDetails)
                 .ThenInclude(bd => bd.Taxi)
                 .AsQueryable();
 
@@ -50,10 +50,15 @@ namespace taxi_api.Controllers.AdminController
                 query = query.Where(b => b.Code.Contains(Code));
             }
 
-            // Lọc theo trạng thái trong BookingDetails
+            // Lọc theo trạng thái trong BookingDetails với trạng thái mới nhất
             if (!string.IsNullOrEmpty(status))
             {
-                query = query.Where(b => b.BookingDetails.Any(bd => bd.Status == status));
+                query = query.Where(b =>
+                 b.BookingDetails
+                  .OrderByDescending(bd => bd.UpdatedAt)
+                  .Select(bd => bd.Status)
+                  .FirstOrDefault() == status);
+
             }
 
             if (fromDate.HasValue)
@@ -131,16 +136,19 @@ namespace taxi_api.Controllers.AdminController
                     DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.Name,
                     DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.ProvinceId)?.Name
                 },
-                BookingDetail = b.BookingDetails.Select(bd => new
-                {
-                    bd.TaxiId,
-                    TaxiDetails = bd.Taxi != null ? new
+                BookingDetail = b.BookingDetails
+                    .OrderByDescending(bd => bd.UpdatedAt)
+                    .Take(1) // Chỉ lấy BookingDetail mới nhất
+                    .Select(bd => new
                     {
-                        bd.Taxi.Name,
-                        bd.Taxi.LicensePlate
-                    } : null,
-                    bd.Status
-                })
+                        bd.TaxiId,
+                        TaxiDetails = bd.Taxi != null ? new
+                        {
+                            bd.Taxi.Name,
+                            bd.Taxi.LicensePlate
+                        } : null,
+                        bd.Status
+                    })
             });
 
             // Trả về dữ liệu
@@ -154,6 +162,7 @@ namespace taxi_api.Controllers.AdminController
                 totalPages
             });
         }
+
 
 
         [HttpPost("store")]

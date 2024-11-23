@@ -103,6 +103,13 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.Content)
                 .HasMaxLength(500)
                 .HasColumnName("content");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("deleted_at");
             entity.Property(e => e.IsRead).HasColumnName("is_read");
             entity.Property(e => e.Navigate)
                 .HasMaxLength(500)
@@ -110,6 +117,10 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.Title)
                 .HasMaxLength(255)
                 .HasColumnName("title");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<Arival>(entity =>
@@ -493,10 +504,21 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.Amount)
                 .HasColumnType("decimal(18, 2)")
                 .HasColumnName("amount");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("deleted_at");
             entity.Property(e => e.Note)
                 .HasMaxLength(255)
                 .HasColumnName("note");
             entity.Property(e => e.Type).HasColumnName("type");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<Review>(entity =>
@@ -568,6 +590,17 @@ public partial class TaxiContext : DbContext
             entity.Property(e => e.Content)
                 .IsUnicode(false)
                 .HasColumnName("content");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("deleted_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.Tickets)
                 .HasForeignKey(d => d.BookingId)
