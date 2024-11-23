@@ -5,7 +5,7 @@ using taxi_api.Models;
 
 namespace taxi_api.Controllers.AdminController
 {
-    [Route("api/ticket")]
+    [Route("api/admin/tickets")]
     [ApiController]
     public class AdminTicketController : ControllerBase
     {

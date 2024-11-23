@@ -12,6 +12,7 @@ using taxi_api.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Authorization;
 using System.Text.Json;
+using Microsoft.CodeAnalysis.Scripting;
 
 namespace taxi_api.Controllers.AdminController
 {
@@ -48,10 +49,10 @@ namespace taxi_api.Controllers.AdminController
             var admin = _context.Admins.FirstOrDefault(a => a.Email == loginDto.Email);
             if (admin == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
-                    message = "Admin not found."
+                    message = "Invalid password."
                 });
             }
 
@@ -59,7 +60,7 @@ namespace taxi_api.Controllers.AdminController
             var passwordVerificationResult = _passwordHasher.VerifyHashedPassword(admin, admin.Password, loginDto.Password);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.Unauthorized,
                     message = "Invalid password."
@@ -68,7 +69,7 @@ namespace taxi_api.Controllers.AdminController
             // Check if the account is locked (if `DeletedAt` indicates account status)
             if (admin.DeletedAt != null)
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.Unauthorized,
                     message = "Your account is locked. Please contact support."
@@ -125,7 +126,7 @@ namespace taxi_api.Controllers.AdminController
             var adminIdClaim = User.Claims.FirstOrDefault(c => c.Type == "AdminId");
             if (adminIdClaim == null)
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.Unauthorized,
                     message = "Invalid token. Admin ID is missing."
@@ -133,7 +134,7 @@ namespace taxi_api.Controllers.AdminController
             }
             if (!int.TryParse(adminIdClaim.Value, out int adminId))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Invalid admin ID."
@@ -143,7 +144,7 @@ namespace taxi_api.Controllers.AdminController
             var admin = await _context.Admins.FindAsync(adminId);
             if (admin == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Admin not found."
@@ -284,7 +285,7 @@ namespace taxi_api.Controllers.AdminController
             var currentAdmin = _context.Admins.FirstOrDefault(a => a.Id == int.Parse(adminIdClaim.Value));
             if (currentAdmin == null || currentAdmin.Role != AdminRole.SuperAdmin.ToString())
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.Unauthorized,
                     message = "Only superadmin can delete admins."
@@ -295,7 +296,7 @@ namespace taxi_api.Controllers.AdminController
             var adminToDelete = _context.Admins.FirstOrDefault(a => a.Id == id);
             if (adminToDelete == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Admin not found."
@@ -305,7 +306,7 @@ namespace taxi_api.Controllers.AdminController
             // Kiểm tra nếu admin cần xóa là superadmin thì không được phép xóa
             if (adminToDelete.Role == AdminRole.SuperAdmin.ToString())
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Superadmin cannot be deleted."
@@ -327,6 +328,131 @@ namespace taxi_api.Controllers.AdminController
                     adminToDelete.Name,
                     adminToDelete.DeletedAt
                 }
+            });
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateAdminProfileRequest request)
+        {
+            // Lấy AdminId từ Claims
+            var adminIdClaim = User.Claims.FirstOrDefault(c => c.Type == "AdminId");
+            if (adminIdClaim == null)
+            {
+                return Unauthorized(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Invalid token. Admin ID is missing."
+                });
+            }
+
+            if (!int.TryParse(adminIdClaim.Value, out int adminId))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Invalid admin ID."
+                });
+            }
+
+            var admin = await _context.Admins.FindAsync(adminId);
+            if (admin == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Admin not found."
+                });
+            }
+
+            admin.Name = request.Name ?? admin.Name;
+            admin.Email = request.Email ?? admin.Email;
+
+            _context.Admins.Update(admin);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Admin profile updated successfully."
+            });
+        }
+
+        [Authorize]
+        [HttpPut("profile/password")]
+        public async Task<IActionResult> UpdatePassword([FromBody] UpdateAdminPasswordRequest request)
+        {
+            // Lấy AdminId từ Claims
+            var adminIdClaim = User.Claims.FirstOrDefault(c => c.Type == "AdminId");
+            if (adminIdClaim == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Unauthorized,
+                    message = "Invalid token. Admin ID is missing."
+                });
+            }
+
+            if (!int.TryParse(adminIdClaim.Value, out int adminId))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Invalid admin ID."
+                });
+            }
+
+            // Tìm admin theo adminId
+            var admin = await _context.Admins.FindAsync(adminId);
+            if (admin == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Admin not found."
+                });
+            }
+
+            // Kiểm tra mật khẩu cũ nếu cần
+            if (!string.IsNullOrEmpty(request.OldPassword))
+            {
+                // Kiểm tra mật khẩu cũ có đúng không
+                var passwordVerificationResult = _passwordHasher.VerifyHashedPassword(admin, admin.Password, request.OldPassword);
+
+                if (passwordVerificationResult != PasswordVerificationResult.Success)
+                {
+                    return Ok(new
+                    {
+                        code = CommonErrorCodes.InvalidData,
+                        message = "Old password is incorrect."
+                    });
+                }
+            }
+
+            // Kiểm tra mật khẩu mới có hợp lệ hay không
+            if (string.IsNullOrEmpty(request.NewPassword))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "New password is required."
+                });
+            }
+
+            // Mã hóa mật khẩu mới
+            var hashedNewPassword = _passwordHasher.HashPassword(admin, request.NewPassword);
+
+            // Cập nhật mật khẩu
+            admin.Password = hashedNewPassword;
+
+            // Lưu thay đổi vào cơ sở dữ liệu
+            _context.Admins.Update(admin);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Admin password updated successfully."
             });
         }
 

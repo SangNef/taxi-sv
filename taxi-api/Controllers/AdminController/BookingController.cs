@@ -26,122 +26,134 @@ namespace taxi_api.Controllers.AdminController
             _context = context;
             this.configuation = configuation;
         }
-          [HttpGet("list")]
-            public async Task<IActionResult> GetAllBookings(
-                [FromQuery] DateOnly? startDate,
-                [FromQuery] DateOnly? endDate,
-                [FromQuery] string? Code,
-                [FromQuery] string? status,
-                [FromQuery] int page = 1,
-                [FromQuery] int pageSize = 10)
-            {
+        [HttpGet("list")]
+        public async Task<IActionResult> GetAllBookings(
+            [FromQuery] string? Code,
+            [FromQuery] string? status,
+            [FromQuery] DateOnly? fromDate, 
+            [FromQuery] DateOnly? toDate,   
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
             // Khởi tạo truy vấn
             var query = _context.Bookings
-            .Where(b => b.DeletedAt != null)
-            .Include(b => b.Customer)
-            .Include(b => b.Arival)
-            .Include(b => b.BookingDetails)
+                .Where(b => b.DeletedAt == null) 
+                .Include(b => b.Customer)
+                .Include(b => b.Arival)
+                .Include(b => b.BookingDetails) 
                 .ThenInclude(bd => bd.Taxi)
-            .AsQueryable();
+                .AsQueryable();
 
+            // Lọc theo mã booking nếu có
             if (!string.IsNullOrEmpty(Code))
-                {
-                    query = query.Where(b => b.Code.Contains(Code));
-                }
+            {
+                query = query.Where(b => b.Code.Contains(Code));
+            }
 
-            // Lọc theo trạng thái nếu có
+            // Lọc theo trạng thái trong BookingDetails
             if (!string.IsNullOrEmpty(status))
             {
                 query = query.Where(b => b.BookingDetails.Any(bd => bd.Status == status));
             }
 
+            if (fromDate.HasValue)
+            {
+                query = query.Where(b => b.StartAt >= fromDate);
+            }
 
-            // Tính tổng số bản ghi
+            if (toDate.HasValue)
+            {
+                query = query.Where(b => b.StartAt <= toDate);
+            }
+
+            // Lấy tổng số bản ghi
             var totalRecords = await query.CountAsync();
 
-                if (totalRecords == 0 || page <= 0 || pageSize <= 0)
-                {
-                    return Ok(new
-                    {
-                        code = CommonErrorCodes.Success,
-                        data = Array.Empty<object>(),
-                        message = "No trips found.",
-                        totalRecords,
-                        currentPage = page,
-                        totalPages = 0
-                    });
-                }
-
-                var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
-                var skip = (page - 1) * pageSize;
-
-                var bookings = await query
-                    .OrderByDescending(b => b.CreatedAt)
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                var pickUpWardIds = bookings.Select(b => b.Arival.PickUpId).Distinct().ToList();
-                var dropOffWardIds = bookings.Select(b => b.Arival.DropOffId).Distinct().ToList();
-
-                var wards = await _context.Wards
-                    .Where(w => pickUpWardIds.Contains(w.Id) || dropOffWardIds.Contains(w.Id))
-                    .ToListAsync();
-
-                var districtIds = wards.Select(w => w.DistrictId).Distinct().ToList();
-                var districts = await _context.Districts
-                    .Where(d => districtIds.Contains(d.Id))
-                    .ToListAsync();
-
-                var provinceIds = districts.Select(d => d.ProvinceId).Distinct().ToList();
-                var provinces = await _context.Provinces
-                    .Where(p => provinceIds.Contains(p.Id))
-                    .ToListAsync();
-
-                // Chuẩn bị phản hồi
-                var bookingList = bookings.Select(b => new
-                {
-                    b.Id,
-                    b.Code,
-                    CustomerName = b.Customer.Name,
-                    b.StartAt,
-                    b.EndAt,
-                    b.Price,
-                    b.Count,
-                    ArivalDetails = new
-                    {
-                        b.Arival.PickUpAddress,
-                        b.Arival.DropOffAddress,
-                        b.Arival.Type,
-                        PickUpWard = wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.Name,
-                        PickUpDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.Name,
-                        PickUpProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.ProvinceId)?.Name,
-                        DropOffWard = wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.Name,
-                        DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.Name,
-                        DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.ProvinceId)?.Name
-                    },
-                    BookingDetail = b.BookingDetails.Select(bd => new
-                    {
-                        bd.TaxiId,
-                        TaxiDetails = bd.Taxi != null ? new
-                        {
-                            bd.Taxi.Name,
-                            bd.Taxi.LicensePlate
-                        } : null
-                    })
-                });
-
-                // Trả về dữ liệu
+            if (totalRecords == 0 || page <= 0 || pageSize <= 0)
+            {
                 return Ok(new
                 {
                     code = CommonErrorCodes.Success,
-                    data = bookingList,
-                    message = "Successfully retrieved the list of trips.",
+                    data = Array.Empty<object>(),
+                    message = "No trips found.",
                     totalRecords,
                     currentPage = page,
-                    totalPages
+                    totalPages = 0
                 });
             }
+
+            var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+            var skip = (page - 1) * pageSize;
+
+            // Phân trang
+            var bookings = await query
+                .OrderByDescending(b => b.CreatedAt)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var pickUpWardIds = bookings.Select(b => b.Arival.PickUpId).Distinct().ToList();
+            var dropOffWardIds = bookings.Select(b => b.Arival.DropOffId).Distinct().ToList();
+
+            var wards = await _context.Wards
+                .Where(w => pickUpWardIds.Contains(w.Id) || dropOffWardIds.Contains(w.Id))
+                .ToListAsync();
+
+            var districtIds = wards.Select(w => w.DistrictId).Distinct().ToList();
+            var districts = await _context.Districts
+                .Where(d => districtIds.Contains(d.Id))
+                .ToListAsync();
+
+            var provinceIds = districts.Select(d => d.ProvinceId).Distinct().ToList();
+            var provinces = await _context.Provinces
+                .Where(p => provinceIds.Contains(p.Id))
+                .ToListAsync();
+
+            // Chuẩn bị phản hồi
+            var bookingList = bookings.Select(b => new
+            {
+                b.Id,
+                b.Code,
+                CustomerName = b.Customer.Name,
+                b.StartAt,
+                b.EndAt,
+                b.Price,
+                b.Count,
+                ArivalDetails = new
+                {
+                    b.Arival.PickUpAddress,
+                    b.Arival.DropOffAddress,
+                    b.Arival.Type,
+                    PickUpWard = wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.Name,
+                    PickUpDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.Name,
+                    PickUpProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.PickUpId)?.DistrictId)?.ProvinceId)?.Name,
+                    DropOffWard = wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.Name,
+                    DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.Name,
+                    DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival.DropOffId)?.DistrictId)?.ProvinceId)?.Name
+                },
+                BookingDetail = b.BookingDetails.Select(bd => new
+                {
+                    bd.TaxiId,
+                    TaxiDetails = bd.Taxi != null ? new
+                    {
+                        bd.Taxi.Name,
+                        bd.Taxi.LicensePlate
+                    } : null,
+                    bd.Status
+                })
+            });
+
+            // Trả về dữ liệu
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                data = bookingList,
+                message = "Successfully retrieved the list of trips.",
+                totalRecords,
+                currentPage = page,
+                totalPages
+            });
+        }
 
 
         [HttpPost("store")]

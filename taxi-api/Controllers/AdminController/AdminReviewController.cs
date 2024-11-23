@@ -5,7 +5,7 @@ using taxi_api.Models;
 
 namespace taxi_api.Controllers.AdminController
 {
-    [Route("api/review")]
+    [Route("api/admin/feedbacks")]
     [ApiController]
     public class AdminReviewController : ControllerBase
     {
@@ -16,7 +16,7 @@ namespace taxi_api.Controllers.AdminController
             _context = context;
         }
 
-        [HttpGet("list-feedback")]
+        [HttpGet()]
         public async Task<IActionResult> ListAllFeedback([FromQuery] string code = null, [FromQuery] string nameOrPhone = null, [FromQuery] int? rate = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var feedbackQuery = _context.Reviews

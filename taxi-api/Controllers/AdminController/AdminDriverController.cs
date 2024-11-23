@@ -213,5 +213,77 @@ namespace taxi_api.Controllers.AdminController
                 return StatusCode(500, new { code = CommonErrorCodes.ServerError, message = "Đã xảy ra lỗi trong quá trình lưu dữ liệu." });
             }
         }
+        [HttpGet("get-driver/{driverId}")]
+        public async Task<IActionResult> GetDriverBookingStatistics(int driverId)
+        {
+            var driver = await _context.Drivers
+                .FirstOrDefaultAsync(d => d.Id == driverId);
+
+            if (driver == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Driver not found."
+                });
+            }
+
+            var taxies = await _context.Taxies
+                .Where(t => t.DriverId == driverId && t.InUse == true)
+                .ToListAsync();
+
+            var completedBookingsCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId != null && bd.Taxi.DriverId == driverId && bd.Status == "4")
+                .CountAsync();
+
+            var canceledBookingsCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId != null && bd.Taxi.DriverId == driverId && bd.Status == "5")
+                .CountAsync();
+
+            var totalBookingsCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId != null && bd.Taxi.DriverId == driverId)
+                .CountAsync();
+
+            var reviews = await _context.Reviews
+                .Where(r => r.BookingDetail != null &&
+                            r.BookingDetail.Taxi != null &&
+                            r.BookingDetail.Taxi.DriverId == driverId)
+                .ToListAsync();
+
+            int reviewCount = reviews.Count;
+            decimal averageRating = reviewCount > 0
+                ? (decimal)reviews.Average(r => r.Rate ?? 0)
+                : 0;
+
+            var rateCounts = reviews
+                .GroupBy(r => r.Rate)
+                .Select(g => new
+                {
+                    Percentage = reviewCount > 0 ? (decimal)g.Count() / reviewCount * 100 : 0
+                })
+                .ToList();
+
+            decimal totalPercentage = rateCounts.Sum(r => r.Percentage);
+
+            var bookingStatistics = new
+            {
+                completedBookingsCount,
+                canceledBookingsCount,
+                totalBookingsCount,
+                reviewCount,
+                averageRating,
+                rateDistribution = totalPercentage 
+            };
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Driver booking statistics retrieved successfully.",
+                data = bookingStatistics
+            });
+        }
+
+
+
+        }
     }
-}

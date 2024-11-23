@@ -359,6 +359,9 @@ public partial class TaxiContext : DbContext
                 .HasColumnName("deleted_at");
             entity.Property(e => e.DriverId).HasColumnName("driver_id");
             entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.Navigate)
+                .HasColumnType("text")
+                .HasColumnName("navigate");
             entity.Property(e => e.Title)
                 .HasMaxLength(255)
                 .HasColumnName("title");

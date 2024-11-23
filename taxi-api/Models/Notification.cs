@@ -21,5 +21,7 @@ public partial class Notification
 
     public DateTime? DeletedAt { get; set; }
 
+    public string? Navigate { get; set; }
+
     public virtual Driver? Driver { get; set; }
 }

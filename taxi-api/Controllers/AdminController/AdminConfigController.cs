@@ -115,6 +115,69 @@ namespace taxi_api.Controllers.AdminController
                 data = configValues
             });
         }
+        [HttpGet("get-main-color")]
+        public IActionResult GetMainColor()
+        {
+            var mainColor = _context.Configs
+                .Where(c => c.ConfigKey == "main_color")
+                .Select(c => new
+                {
+                    c.Name,
+                    c.Value,
+                    c.CreatedAt,
+                    c.UpdatedAt,
+                    c.DeletedAt
+                })
+                .FirstOrDefault();
+
+            if (mainColor == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Main color not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Main color retrieved successfully.",
+                data = mainColor
+            });
+        }
+
+        [HttpGet("get-homescreen-banner")]
+        public IActionResult GetHomescreenBanner()
+        {
+            var homescreenBanner = _context.Configs
+                .Where(c => c.ConfigKey == "homescreen_banner")
+                .Select(c => new
+                {
+                    c.Name,
+                    c.Value,
+                    c.CreatedAt,
+                    c.UpdatedAt,
+                    c.DeletedAt
+                })
+                .FirstOrDefault();
+
+            if (homescreenBanner == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Homescreen banner not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Homescreen banner retrieved successfully.",
+                data = homescreenBanner
+            });
+        }
 
         [HttpPut("edit-airport-price")]
         public IActionResult EditAirportPrice([FromBody] ConfigDto configDto)
@@ -277,5 +340,100 @@ namespace taxi_api.Controllers.AdminController
                 });
             }
         }
+        [HttpPut("edit-main-color")]
+        public IActionResult EditMainColor([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return BadRequest(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Main color value must be provided."
+                });
+            }
+
+            var mainColorConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "main_color");
+
+            if (mainColorConfig == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Main color configuration not found."
+                });
+            }
+
+            // Cập nhật main color
+            mainColorConfig.Value = configDto.Value;
+            mainColorConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Main color updated successfully.",
+                    data = new { mainColor = mainColorConfig.Value }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating the main color: {ex.Message}"
+                });
+            }
+        }
+        [HttpPut("edit-homescreen-banner")]
+        public IActionResult EditHomescreenBanner([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return BadRequest(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Homescreen banner URL or file must be provided."
+                });
+            }
+
+            var homescreenBannerConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "homescreen_banner");
+
+            if (homescreenBannerConfig == null)
+            {
+                return NotFound(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Homescreen banner configuration not found."
+                });
+            }
+
+            // Cập nhật homescreen banner
+            homescreenBannerConfig.Value = configDto.Value;
+            homescreenBannerConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Homescreen banner updated successfully.",
+                    data = new { homescreenBanner = homescreenBannerConfig.Value }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating the homescreen banner: {ex.Message}"
+                });
+            }
+        }
+
     }
 }

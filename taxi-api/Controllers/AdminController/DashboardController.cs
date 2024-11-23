@@ -17,38 +17,32 @@ namespace taxi_api.Controllers.AdminController
         {
             _context = context;
         }
-
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
             var today = DateOnly.FromDateTime(DateTime.Today); // Chuyển today's DateTime thành DateOnly
             var startOfMonth = new DateOnly(today.Year, today.Month, 1); // Ngày đầu tháng
-            var startOfSixMonthsAgo = today.AddMonths(-6); // Ngày 6 tháng trước
+            var startOfSixMonthsAgo = today.AddMonths(-5); // Ngày bắt đầu của 6 tháng gần nhất (bao gồm tháng hiện tại)
 
             // 1. Số chuyến trong tháng
             var tripsThisMonth = await _context.Bookings
                 .Where(b => b.StartAt.HasValue)
-                .ToListAsync(); // Lấy dữ liệu về bộ nhớ
+                .ToListAsync(); 
 
             var tripsThisMonthCount = tripsThisMonth
                 .Where(b => b.StartAt.Value >= startOfMonth && b.StartAt.Value <= today)
                 .Count();
 
-            // 2. Tổng doanh thu trong tháng
             var totalRevenueThisMonth = tripsThisMonth
                 .Where(b => b.StartAt.Value >= startOfMonth && b.StartAt.Value <= today)
                 .Sum(b => b.Price);
 
-            // 3. Tổng số tài xế
             var totalDrivers = await _context.Drivers.CountAsync();
 
-            // 4. Tổng số khách hàng
             var totalCustomers = await _context.Customers.CountAsync();
 
-            // 5. Tổng số đánh giá
             var totalReviews = await _context.Reviews.CountAsync();
 
-            // 6. Doanh thu và số chuyến trong 6 tháng gần nhất
             var revenueLastSixMonths = await _context.Bookings
                 .Where(b => b.StartAt.HasValue && b.StartAt.Value >= startOfSixMonthsAgo)
                 .ToListAsync();
@@ -66,6 +60,18 @@ namespace taxi_api.Controllers.AdminController
                 .ThenByDescending(g => g.Month)
                 .ToList();
 
+            var monthsList = Enumerable.Range(0, 6)
+                .Select(i => new
+                {
+                    Year = startOfSixMonthsAgo.AddMonths(i).Year,
+                    Month = startOfSixMonthsAgo.AddMonths(i).Month,
+                    TotalRevenue = revenueAndTripsLastSixMonths
+                        .FirstOrDefault(x => x.Year == startOfSixMonthsAgo.AddMonths(i).Year && x.Month == startOfSixMonthsAgo.AddMonths(i).Month)?.TotalRevenue ?? 0,
+                    TripCount = revenueAndTripsLastSixMonths
+                        .FirstOrDefault(x => x.Year == startOfSixMonthsAgo.AddMonths(i).Year && x.Month == startOfSixMonthsAgo.AddMonths(i).Month)?.TripCount ?? 0
+                })
+                .ToList();
+
             // Trả về kết quả dưới dạng JSON
             return Ok(new
             {
@@ -76,12 +82,13 @@ namespace taxi_api.Controllers.AdminController
                     totalRevenueThisMonths = totalRevenueThisMonth,
                     totalDriver = totalDrivers,
                     totalCustomer = totalCustomers,
-                    totalReviews = totalReviews,  
-                    revenueLastSixMonths = revenueAndTripsLastSixMonths
+                    totalReviews = totalReviews,
+                    revenueLastSixMonths = monthsList
                 },
                 message = "Dashboard data retrieved successfully"
             });
         }
+
 
     }
 }

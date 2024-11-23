@@ -99,25 +99,23 @@ namespace taxi_api.Controllers.DriverController
             if (loginDto == null)
                 return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Invalid login data." });
 
-            // Tìm tài xế theo số điện thoại
             var driver = _context.Drivers
-                .Include(d => d.Taxies) // Bao gồm dữ liệu Taxies khi truy vấn tài xế
+                .Include(d => d.Taxies)
                 .FirstOrDefault(x => x.Phone == loginDto.Phone);
 
             if (driver == null)
-                return NotFound(new { code = CommonErrorCodes.NotFound, message = "Driver does not exist." });
+                return Ok(new { code = CommonErrorCodes.NotFound, message = "Invalid phone or password ." });
 
-            // Kiểm tra mật khẩu đã được băm
             var passwordVerificationResult = _passwordHasher.VerifyHashedPassword(driver, driver.Password, loginDto.Password);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)
-                return Unauthorized(new { code = CommonErrorCodes.Unauthorized, message = "Invalid account or password" });
+                return Ok(new { code = CommonErrorCodes.Unauthorized, message = "Invalid phone or password ." });
 
             // Kiểm tra trạng thái tài khoản
             if (driver.IsActive == false)
-                return Unauthorized(new { code = CommonErrorCodes.Unauthorized, message = "Driver account is not activated." });
+                return Ok(new { code = CommonErrorCodes.Unauthorized, message = "Driver account is not activated ." });
 
             if (driver.DeletedAt != null)
-                return Unauthorized(new { code = CommonErrorCodes.Unauthorized, message = "Your account is locked. Please contact customer support." });
+                return Ok(new { code = CommonErrorCodes.Unauthorized, message = "Your account is locked. Please contact customer support ." });
 
             // Định nghĩa responseData để trả về dữ liệu tài xế và token
             var responseData = new
