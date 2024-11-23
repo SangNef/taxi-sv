@@ -548,6 +548,7 @@ namespace taxi_api.Controllers.DriverController
         }
        
         [Authorize]
+        [Authorize]
         [HttpPost("claim-booking")]
         public async Task<IActionResult> ClaimBooking([FromBody] DriverBookingStoreDto request)
         {
@@ -557,15 +558,25 @@ namespace taxi_api.Controllers.DriverController
             {
                 return Unauthorized(new { message = "Unauthorized: Driver ID not found." });
             }
+
             var booking = await _context.Bookings.FindAsync(request.BookingId);
             if (booking == null)
             {
                 return NotFound(new { message = "Booking not found." });
             }
-            var bookingDetails = await _context.BookingDetails
-               .Where(bd => bd.BookingId == request.BookingId )
-               .ToListAsync();
 
+            // Kiểm tra BookingDetail liên quan đến BookingId
+            var existingBookingDetails = await _context.BookingDetails
+                .Where(bd => bd.BookingId == request.BookingId)
+                .ToListAsync();
+
+            // Kiểm tra nếu tồn tại trạng thái khác "5" (1, 2, 3, 4)
+            if (existingBookingDetails.Any(bd => bd.Status != "5"))
+            {
+                return BadRequest(new { message = "This booking has already been claimed or is in progress." });
+            }
+
+            // Kiểm tra tài xế và taxi
             var taxi = await _context.Taxies
                 .Where(t => t.DriverId == driverId && t.InUse == true)
                 .FirstOrDefaultAsync();
@@ -584,6 +595,11 @@ namespace taxi_api.Controllers.DriverController
             decimal commissionRate = driver.Commission.GetValueOrDefault(0);
             decimal bookingPrice = booking.Price.GetValueOrDefault(0);
             decimal deduction = (bookingPrice * commissionRate) / 100;
+
+            if (driver.Price.GetValueOrDefault(0) < (int)deduction)
+            {
+                return BadRequest(new { message = "The driver doesn't have enough money." });
+            }
 
             driver.Price -= deduction;
 
@@ -605,10 +621,6 @@ namespace taxi_api.Controllers.DriverController
             };
             await _context.AdminNotifications.AddAsync(adminNotification);
 
-            if (driver.Price.GetValueOrDefault(0) < (int)deduction)
-            {
-                return BadRequest(new { message = "The driver doesn't have enough money." });
-            }
             var currentSeatCount = await _context.BookingDetails
                 .Where(bd => bd.TaxiId == taxi.Id && bd.Status == "2")
                 .SumAsync(bd => bd.Booking.Count);
