@@ -33,7 +33,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (!int.TryParse(driverIdClaim.Value, out int driverId))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = "InvalidData",
                     message = "Invalid driver ID."
@@ -81,7 +81,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (notification == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = "NotFound",
                     message = "Notification not found."
