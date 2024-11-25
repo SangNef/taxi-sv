@@ -15,13 +15,13 @@ namespace taxi_api.Controllers.AdminController
 {
     [Route("api/admin/booking")]
     [ApiController]
-    public class BookingController : ControllerBase
+    public class AdminBookingController : ControllerBase
     {
         private readonly TaxiContext _context;
         private readonly IConfiguration configuation;
 
 
-        public BookingController(TaxiContext context, IConfiguration configuation)
+        public AdminBookingController(TaxiContext context, IConfiguration configuation)
         {
             _context = context;
             this.configuation = configuation;
@@ -50,15 +50,21 @@ namespace taxi_api.Controllers.AdminController
                 query = query.Where(b => b.Code.Contains(Code));
             }
 
-            // Lọc theo trạng thái trong BookingDetails với trạng thái mới nhất
             if (!string.IsNullOrEmpty(status))
             {
-                query = query.Where(b =>
-                 b.BookingDetails
-                  .OrderByDescending(bd => bd.UpdatedAt)
-                  .Select(bd => bd.Status)
-                  .FirstOrDefault() == status);
-
+                if (status == "0")
+                {
+                    query = query.Where(b => !b.BookingDetails.Any());
+                }
+                else
+                {
+                    // Lọc theo trạng thái trong BookingDetails
+                    query = query.Where(b =>
+                        b.BookingDetails
+                            .OrderByDescending(bd => bd.UpdatedAt)
+                            .Select(bd => bd.Status)
+                            .FirstOrDefault() == status);
+                }
             }
 
             if (fromDate.HasValue)

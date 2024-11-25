@@ -189,7 +189,6 @@ namespace taxi_api.Controllers.DriverController
                 });
             }
 
-            // Tìm driver bằng DriverId và kết hợp với thông tin xe
             var driverProfile = await _context.Drivers
                 .Where(d => d.Id == driverId)
                 .GroupJoin(
@@ -227,11 +226,58 @@ namespace taxi_api.Controllers.DriverController
                 });
             }
 
+            // Thống kê booking
+            var completedBookingsCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId != null && bd.Taxi.DriverId == driverId && bd.Status == "4")
+                .CountAsync();
+
+            var canceledBookingsCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId != null && bd.Taxi.DriverId == driverId && bd.Status == "5")
+                .CountAsync();
+
+            var totalBookingsCount = await _context.BookingDetails
+                .Where(bd => bd.TaxiId != null && bd.Taxi.DriverId == driverId)
+                .CountAsync();
+
+            var reviews = await _context.Reviews
+                .Where(r => r.BookingDetail != null &&
+                            r.BookingDetail.Taxi != null &&
+                            r.BookingDetail.Taxi.DriverId == driverId)
+                .ToListAsync();
+
+            int reviewCount = reviews.Count;
+            decimal averageRating = reviewCount > 0
+                ? (decimal)reviews.Average(r => r.Rate ?? 0)
+                : 0;
+
+            var rateCounts = reviews
+                .GroupBy(r => r.Rate)
+                .Select(g => new
+                {
+                    Percentage = reviewCount > 0 ? (decimal)g.Count() / reviewCount * 100 : 0
+                })
+                .ToList();
+
+            decimal totalPercentage = rateCounts.Sum(r => r.Percentage);
+
+            // Trả về kết quả
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
-                message = "Driver profile retrieved successfully.",
-                data = driverProfile
+                message = "Driver profile and booking statistics retrieved successfully.",
+                data = new
+                {
+                    DriverInfo = driverProfile,
+                    BookingStatistics = new
+                    {
+                        completedBookingsCount,
+                        canceledBookingsCount,
+                        totalBookingsCount,
+                        reviewCount,
+                        averageRating,
+                        rateDistribution = totalPercentage
+                    }
+                }
             });
         }
 
