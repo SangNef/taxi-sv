@@ -214,7 +214,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (adminCreateDto == null)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Admin creation data is invalid."
@@ -225,7 +225,7 @@ namespace taxi_api.Controllers.AdminController
             var existingAdmin = _context.Admins.FirstOrDefault(a => a.Email == adminCreateDto.Email);
             if (existingAdmin != null)
             {
-                return Conflict(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Email is already in use."

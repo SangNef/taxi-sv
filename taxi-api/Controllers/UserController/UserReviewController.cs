@@ -26,12 +26,12 @@ namespace taxi_api.Controllers.UserController
         {
             if (reviewDto == null)
             {
-                return BadRequest(new { message = "Review data cannot be null" });
+                return Ok(new { message = "Review data cannot be null" });
             }
 
             if (string.IsNullOrWhiteSpace(reviewDto.Review1) || reviewDto.Rate == null || reviewDto.Rate < 1 || reviewDto.Rate > 5)
             {
-                return BadRequest(new { message = "Invalid review or rating" });
+                return Ok(new { message = "Invalid review or rating" });
             }
 
             var bookingDetail = await _context.BookingDetails
@@ -41,12 +41,12 @@ namespace taxi_api.Controllers.UserController
 
             if (bookingDetail == null)
             {
-                return NotFound(new { message = "Booking detail not found" });
+                return Ok(new { message = "Booking detail not found" });
             }
 
             if (bookingDetail.Booking == null ||  bookingDetail.Status != "4")
             {
-                return BadRequest(new { message = "Review can only be created for booking status 4" });
+                return Ok(new { message = "Review can only be created for booking status 4" });
             }
 
             // Tạo đối tượng Review từ DTO

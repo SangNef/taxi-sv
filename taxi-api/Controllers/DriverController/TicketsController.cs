@@ -22,7 +22,7 @@ namespace taxi_api.Controllers.DriverController
             var booking = await _context.Bookings.FindAsync(request.BookingId);
             if (booking == null)
             {
-                return NotFound(new { message = "Booking not found." });
+                return Ok(new { message = "Booking not found." });
             }
           
             // Tạo đối tượng Ticket mới

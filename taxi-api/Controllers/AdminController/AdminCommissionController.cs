@@ -25,7 +25,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (commissionConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Commission configuration not found."
@@ -55,7 +55,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (royaltyConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Royalty configuration not found."
@@ -83,7 +83,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Commission value must be provided."
@@ -95,7 +95,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (commissionConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Commission configuration not found."
@@ -133,7 +133,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Royalty value must be provided."
@@ -145,7 +145,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (royaltyConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Royalty configuration not found."

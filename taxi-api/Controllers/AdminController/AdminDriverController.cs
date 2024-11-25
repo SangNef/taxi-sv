@@ -98,7 +98,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (driverId <= 0)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -110,7 +110,7 @@ namespace taxi_api.Controllers.AdminController
             var driver = _context.Drivers.FirstOrDefault(d => d.Id == driverId);
             if (driver == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     data = (object)null,
@@ -150,7 +150,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (driverId <= 0)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -188,14 +188,14 @@ namespace taxi_api.Controllers.AdminController
             // Kiểm tra xem giá trị Commission có nằm trong khoảng từ 0 đến 100 không
             if (commissionDto.Commission < 0 || commissionDto.Commission > 100)
             {
-                return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Commission phải nằm trong khoảng từ 0 đến 100." });
+                return Ok(new { code = CommonErrorCodes.InvalidData, message = "Commission phải nằm trong khoảng từ 0 đến 100." });
             }
 
             // Tìm tài xế theo Id
             var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.Id == driverId);
             if (driver == null)
             {
-                return NotFound(new { code = CommonErrorCodes.NotFound, message = "Không tìm thấy tài xế." });
+                return Ok(new { code = CommonErrorCodes.NotFound, message = "Không tìm thấy tài xế." });
             }
 
             // Cập nhật giá trị Commission
@@ -221,7 +221,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (driver == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Driver not found."

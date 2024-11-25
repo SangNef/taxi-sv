@@ -187,7 +187,7 @@ namespace taxi_api.Controllers.AdminController
             // Validate the request
             if (request == null)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -208,7 +208,7 @@ namespace taxi_api.Controllers.AdminController
             }
             else
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -226,7 +226,7 @@ namespace taxi_api.Controllers.AdminController
                 }
                 else
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.InvalidData,
                         data = (object)null,
@@ -245,7 +245,7 @@ namespace taxi_api.Controllers.AdminController
                 }
                 else
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.InvalidData,
                         data = (object)null,
@@ -256,7 +256,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (!await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -282,7 +282,7 @@ namespace taxi_api.Controllers.AdminController
 
                 if (!await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.InvalidData,
                         data = (object)null,
@@ -301,17 +301,17 @@ namespace taxi_api.Controllers.AdminController
                         }
                         else
                         {
-                            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
+                            return Ok(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
                         }
                     }
                     else
                     {
-                        return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
+                        return Ok(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
                     }
                 }
                 else
                 {
-                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
+                    return Ok(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
                 }
             }
             else if (request.Types == "airport")
@@ -326,12 +326,12 @@ namespace taxi_api.Controllers.AdminController
                 }
                 else
                 {
-                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
+                    return Ok(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
                 }
             }
             else
             {
-                return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
+                return Ok(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
             }
 
             arival.Price = price;
@@ -416,7 +416,7 @@ namespace taxi_api.Controllers.AdminController
             var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
             if (booking == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     data = (object)null,
@@ -431,7 +431,7 @@ namespace taxi_api.Controllers.AdminController
 
                 if (bookingDetails.Any(bd => bd.Status == "2" || bd.Status == "3" || bd.Status == "4"))
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.NotFound,
                         message = "Cannot cancel booking with status 2, 3, or 4."
@@ -455,7 +455,7 @@ namespace taxi_api.Controllers.AdminController
             // Kiểm tra nếu mã code không được truyền vào
             if (string.IsNullOrEmpty(code))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -474,7 +474,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (booking == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     data = (object)null,

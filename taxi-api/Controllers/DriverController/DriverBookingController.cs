@@ -145,14 +145,14 @@ namespace taxi_api.Controllers.DriverController
             // Kiểm tra tính hợp lệ của DriverId
             if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
             {
-                return Unauthorized(new { message = "Unauthorized: Driver ID not found." });
+                return Ok(new { message = "Unauthorized: Driver ID not found." });
             }
 
             // Tìm Booking theo BookingId
             var booking = await _context.Bookings.FindAsync(request.BookingId);
             if (booking == null)
             {
-                return NotFound(new { message = "Booking not found." });
+                return Ok(new { message = "Booking not found." });
             }
 
             // Tìm BookingDetails liên quan đến BookingId
@@ -162,7 +162,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (!bookingDetails.Any())
             {
-                return NotFound(new { message = "BookingDetails not found." });
+                return Ok(new { message = "BookingDetails not found." });
             }
 
             // Tìm taxi liên quan đến Booking
@@ -171,14 +171,14 @@ namespace taxi_api.Controllers.DriverController
 
             if (taxi == null)
             {
-                return NotFound(new { message = "Taxi not found." });
+                return Ok(new { message = "Taxi not found." });
             }
 
             // Tìm tài xế liên quan đến taxi
             var driver = await _context.Drivers.FindAsync(taxi.DriverId);
             if (driver == null)
             {
-                return NotFound(new { message = "Driver not found." });
+                return Ok(new { message = "Driver not found." });
             }
 
             // Thay đổi trạng thái cho từng BookingDetail
@@ -216,6 +216,15 @@ namespace taxi_api.Controllers.DriverController
                         bookingDetail.Status = "4";
                         booking.EndAt = DateTime.UtcNow;
 
+                        var revenue = new Revenue
+                        {
+                            Type = false,
+                            Amount = - result2,
+                            Note = $"You have been deducted -{result2}$ for driver creates trip have code booking #{booking.Code}"
+                        };
+                        await _context.Revenues.AddAsync(revenue);
+                        await _context.SaveChangesAsync();
+
                         var newWallet = new Wallet
                         {
                             DriverId = driverInvite.Id,
@@ -248,11 +257,13 @@ namespace taxi_api.Controllers.DriverController
                             Navigate = $"/booking/{booking.Code}"
                         };
                         await _context.AdminNotifications.AddAsync(newNotificationAdmin);
+                        await _context.SaveChangesAsync();
+
                     }
                 }
                 else
                 {
-                    return BadRequest(new { message = "Booking is ready successfully" });
+                    return Ok(new { message = "Booking is ready successfully" });
                 }
 
                 bookingDetail.UpdatedAt = DateTime.UtcNow;
@@ -281,7 +292,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     message = "Unauthorized: Driver ID not found."
                 });
@@ -294,7 +305,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (taxies == null || !taxies.Any())
             {
-                return NotFound(new { message = "No taxis found for the current driver." });
+                return Ok(new { message = "No taxis found for the current driver." });
             }
 
             var bookingDetails = await _context.BookingDetails
@@ -307,7 +318,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (bookingDetails == null || bookingDetails.Count == 0)
             {
-                return NotFound(new { message = "No assigned bookings found with statuses 2, 3, 4, or 5." });
+                return Ok(new { message = "No assigned bookings found with statuses 2, 3, 4, or 5." });
             }
 
             var bookingList = new List<object>();
@@ -500,7 +511,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (string.IsNullOrEmpty(driverIdClaim) || !int.TryParse(driverIdClaim, out int driverId))
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     message = "Unauthorized: Driver ID not found."
                 });
@@ -515,12 +526,12 @@ namespace taxi_api.Controllers.DriverController
 
             if (bookingDetail == null)
             {
-                return NotFound(new { message = "Booking detail not found or not associated with this driver." });
+                return Ok(new { message = "Booking detail not found or not associated with this driver." });
             }
 
             if (bookingDetail.Booking.DeletedAt != null)
             {
-                return BadRequest(new { message = "This booking has already been deleted." });
+                return  Ok(new { message = "This booking has already been deleted." });
             }
 
             switch (bookingDetail.Status)
@@ -532,6 +543,8 @@ namespace taxi_api.Controllers.DriverController
                     await _context.SaveChangesAsync();
 
                     return Ok(new { message = "Booking has been successfully canceled and updated." });
+                case "2":
+                    return BadRequest(new { message = "Cannot cancel booking: Driver is already confirm booking." });
 
                 case "3":
                     return BadRequest(new { message = "Cannot cancel booking: Driver is already picking up the customer." });
@@ -559,7 +572,7 @@ namespace taxi_api.Controllers.DriverController
             var booking = await _context.Bookings.FindAsync(request.BookingId);
             if (booking == null)
             {
-                return NotFound(new { message = "Booking not found." });
+                return Ok(new { message = "Booking not found." });
             }
 
             // Kiểm tra BookingDetail liên quan đến BookingId
@@ -580,13 +593,13 @@ namespace taxi_api.Controllers.DriverController
 
             if (taxi == null)
             {
-                return NotFound(new { message = "No available taxi in use for this driver." });
+                return Ok(new { message = "No available taxi in use for this driver." });
             }
 
             var driver = await _context.Drivers.FindAsync(driverId);
             if (driver == null)
             {
-                return NotFound(new { message = "Driver not found." });
+                return Ok(new { message = "Driver not found." });
             }
 
             decimal commissionRate = driver.Commission.GetValueOrDefault(0);
@@ -609,6 +622,16 @@ namespace taxi_api.Controllers.DriverController
             };
             await _context.Wallets.AddAsync(newWallet);
 
+            var revenue = new Revenue
+            {
+                Type = true,
+                Amount = deduction,
+                Note = $"You have been added +{deduction}$ into the account from  #{booking.Code}"
+
+            };
+            await _context.Revenues.AddAsync(revenue);
+
+
             var adminNotification = new AdminNotification
             {
                 IsRead = false,
@@ -630,7 +653,7 @@ namespace taxi_api.Controllers.DriverController
             var commission = driver.Commission;
             if (commission == null)
             {
-                return NotFound(new { message = "Commission not found for this driver." });
+                return Ok(new { message = "Commission not found for this driver." });
             }
 
             // Tạo BookingDetail mới
@@ -764,6 +787,15 @@ namespace taxi_api.Controllers.DriverController
             };
             await _context.Wallets.AddAsync(newWallet);
 
+            var revenue = new Revenue
+            {   
+                Type = true,
+                Amount = deduction,
+                Note = $"You have been added +{deduction}$ into the account from  #{booking.Code}"
+               
+            };
+            await _context.Revenues.AddAsync(revenue);
+
             var adminNotification = new AdminNotification
             {
                 IsRead = false,
@@ -896,7 +928,7 @@ namespace taxi_api.Controllers.DriverController
 
                 if (!await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.InvalidData,
                         data = (object)null,
@@ -915,17 +947,17 @@ namespace taxi_api.Controllers.DriverController
                         }
                         else
                         {
-                            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
+                            return Ok(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
                         }
                     }
                     else
                     {
-                        return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
+                        return Ok(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
                     }
                 }
                 else
                 {
-                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
+                    return Ok(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
                 }
             }
             else if (request.Types == "airport")
@@ -940,12 +972,12 @@ namespace taxi_api.Controllers.DriverController
                 }
                 else
                 {
-                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
+                    return Ok(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
                 }
             }
             else
             {
-                return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
+                return Ok(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
             }
 
             arival.Price = price;
@@ -1046,14 +1078,14 @@ namespace taxi_api.Controllers.DriverController
 
             if (booking == null)
             {
-                return NotFound(new { message = "Booking not found." });
+                return Ok(new { message = "Booking not found." });
             }
 
             // Kiểm tra nếu tài xế có liên quan đến Booking này
             var bookingDetail = booking.BookingDetails.FirstOrDefault(bd => bd.Taxi.DriverId == driverId);
             if (bookingDetail == null)
             {
-                return BadRequest(new { message = "This booking is not assigned to this driver." });
+                return Ok(new { message = "This booking is not assigned to this driver." });
             }
 
             // Lấy thông tin pickUpWard

@@ -25,7 +25,7 @@ namespace taxi_api.Controllers.AdminController
             // Ensure page and pageSize are valid
             if (page <= 0 || pageSize <= 0)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Page number and page size must be greater than 0."
@@ -89,7 +89,7 @@ namespace taxi_api.Controllers.AdminController
             // Validate the input
             if (provinceDto.Price == null || provinceDto.Price <= 0)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Price must be provided and greater than 0."
@@ -100,7 +100,7 @@ namespace taxi_api.Controllers.AdminController
             var province = _context.Provinces.FirstOrDefault(p => p.Id == id);
             if (province == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Province not found."

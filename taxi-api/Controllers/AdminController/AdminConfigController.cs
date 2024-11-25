@@ -37,7 +37,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (airportPrice == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Airport price not found."
@@ -69,7 +69,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (configValues.Count == 0)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "No matching pickup configuration values found."
@@ -101,7 +101,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (configValues.Count == 0)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "No matching dropoff configuration values found."
@@ -132,7 +132,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (mainColor == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Main color not found."
@@ -164,7 +164,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (homescreenBanner == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Homescreen banner not found."
@@ -184,7 +184,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Airport price value must be provided."
@@ -196,7 +196,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (airportPriceConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Airport price configuration not found."
@@ -232,7 +232,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Pickup ID and default arrival pickup value must be provided."
@@ -247,7 +247,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (pickupIdConfig == null || defaultArrivalPickupConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Pickup configuration not found."
@@ -289,7 +289,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Dropoff ID and default arrival dropoff value must be provided."
@@ -304,7 +304,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (dropoffIdConfig == null || defaultArrivalDropoffConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Dropoff configuration not found."
@@ -345,7 +345,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Main color value must be provided."
@@ -357,7 +357,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (mainColorConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Main color configuration not found."
@@ -392,7 +392,7 @@ namespace taxi_api.Controllers.AdminController
         {
             if (string.IsNullOrEmpty(configDto.Value))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Homescreen banner URL or file must be provided."
@@ -404,7 +404,7 @@ namespace taxi_api.Controllers.AdminController
 
             if (homescreenBannerConfig == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Homescreen banner configuration not found."

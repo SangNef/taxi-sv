@@ -213,7 +213,7 @@ namespace taxi_api.Controllers.UserController
             // Validate the request
             if (request == null)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -234,7 +234,7 @@ namespace taxi_api.Controllers.UserController
             }
             else
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -253,7 +253,7 @@ namespace taxi_api.Controllers.UserController
                 }
                 else
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.InvalidData,
                         data = (object)null,
@@ -272,7 +272,7 @@ namespace taxi_api.Controllers.UserController
                 }
                 else
                 {
-                    return BadRequest(new
+                    return Ok(new
                     {
                         code = CommonErrorCodes.InvalidData,
                         data = (object)null,
@@ -283,7 +283,7 @@ namespace taxi_api.Controllers.UserController
 
             if (!await _context.Wards.AnyAsync(w => w.Id == request.PickUpId))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -293,7 +293,7 @@ namespace taxi_api.Controllers.UserController
 
             if (!await _context.Wards.AnyAsync(w => w.Id == request.DropOffId))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -328,17 +328,17 @@ namespace taxi_api.Controllers.UserController
                         }
                         else
                         {
-                            return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
+                            return Ok(new { code = CommonErrorCodes.InvalidData, message = "Province not found." });
                         }
                     }
                     else
                     {
-                        return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
+                        return Ok(new { code = CommonErrorCodes.InvalidData, message = "District not found." });
                     }
                 }
                 else
                 {
-                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
+                    return Ok(new { code = CommonErrorCodes.InvalidData, message = "Ward not found." });
                 }
             }
             else if (request.Types == "airport")
@@ -353,12 +353,12 @@ namespace taxi_api.Controllers.UserController
                 }
                 else
                 {
-                    return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
+                    return Ok(new { code = CommonErrorCodes.InvalidData, message = "Airport price config not found." });
                 }
             }
             else
             {
-                return BadRequest(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
+                return Ok(new { code = CommonErrorCodes.InvalidData, message = "Invalid type for Arival." });
             }
 
             arival.Price = price;

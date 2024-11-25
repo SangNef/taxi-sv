@@ -24,9 +24,18 @@ namespace taxi_api.Controllers.DriverController
         [HttpPost("add-taxi")]
         public async Task<IActionResult> AddTaxi([FromBody] TaxiRequestDto request)
         {
+            if (request.Seat <= 1)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    data = (object)null,
+                    message = "Seat count must be greater than 1."
+                });
+            }
             if (request == null || string.IsNullOrEmpty(request.Name) || string.IsNullOrEmpty(request.LicensePlate) || request.Seat <= 0)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     data = (object)null,
@@ -49,7 +58,7 @@ namespace taxi_api.Controllers.DriverController
             var driver = await _context.Drivers.FindAsync(driverId);
             if (driver == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     data = (object)null,
@@ -57,24 +66,39 @@ namespace taxi_api.Controllers.DriverController
                 });
             }
 
+            // Cập nhật tất cả các taxi của tài xế thành InUse = false
+            var existingTaxies = _context.Taxies.Where(t => t.DriverId == driverId && t.InUse ==  true);
+            foreach (var existingTaxi in existingTaxies)
+            {
+                existingTaxi.InUse = false;
+                existingTaxi.UpdatedAt = DateTime.UtcNow;
+            }
+            
+            // Tạo taxi mới với trạng thái InUse = true
             var taxi = new Taxy
             {
-                DriverId = driverId, 
+                DriverId = driverId,
                 Name = request.Name,
                 LicensePlate = request.LicensePlate,
                 Seat = request.Seat,
-                InUse = false,
+                InUse = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-
+           
             await _context.Taxies.AddAsync(taxi);
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
-                data = new { taxiId = taxi.Id },
+                data = new
+                {
+                    taxiId = taxi.Id,
+                    taxiName = taxi.Name,
+                    licensePlate = taxi.LicensePlate,
+                    inUse = taxi.InUse
+                },
                 message = "Taxi successfully created."
             });
         }

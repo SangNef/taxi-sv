@@ -174,7 +174,7 @@ namespace taxi_api.Controllers.DriverController
             var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId");
             if (driverIdClaim == null)
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.Unauthorized,
                     message = "Invalid token. Driver ID is missing."
@@ -182,7 +182,7 @@ namespace taxi_api.Controllers.DriverController
             }
             if (!int.TryParse(driverIdClaim.Value, out int driverId))
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Invalid driver ID."
@@ -220,7 +220,7 @@ namespace taxi_api.Controllers.DriverController
 
             if (driverProfile == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Driver not found."
@@ -241,7 +241,7 @@ namespace taxi_api.Controllers.DriverController
         {
             if (editProfileDto == null)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Invalid profile data."
@@ -261,7 +261,7 @@ namespace taxi_api.Controllers.DriverController
             var driver = await _context.Drivers.FindAsync(driverId);
             if (driver == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Driver not found."
@@ -295,7 +295,7 @@ namespace taxi_api.Controllers.DriverController
         {
             if (changePasswordDto == null)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.InvalidData,
                     message = "Invalid password data."
@@ -315,7 +315,7 @@ namespace taxi_api.Controllers.DriverController
             var driver = await _context.Drivers.FindAsync(driverId);
             if (driver == null)
             {
-                return NotFound(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.NotFound,
                     message = "Driver not found."
@@ -325,7 +325,7 @@ namespace taxi_api.Controllers.DriverController
             var passwordVerificationResult = _passwordHasher.VerifyHashedPassword(driver, driver.Password, changePasswordDto.OldPassword);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)
             {
-                return Unauthorized(new
+                return Ok(new
                 {
                     code = CommonErrorCodes.Unauthorized,
                     message = "Old password is incorrect."
