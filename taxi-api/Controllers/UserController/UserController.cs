@@ -104,15 +104,36 @@ namespace taxi_api.Controllers.UserController
             var taxies = await _context.Taxies.ToListAsync();
 
             var bookingDetails = booking.BookingDetails
-                .OrderByDescending(bd => bd.UpdatedAt) 
+                .OrderByDescending(bd => bd.UpdatedAt)
                 .ToList();
 
-            var bookingDetailList = bookingDetails.Select(bd => new
+            var bookingDetailList = bookingDetails.Select(async bd =>
             {
-                bd.BookingId,
-                bd.Status,
-                TaxiDetails = taxies.FirstOrDefault(t => t.Id == bd.TaxiId)
+                var reviewDetails = bd.Status == "4" ? await _context.Reviews
+                    .Where(r => r.BookingDetailId == bd.Id)
+                    .Select(r => new
+                    {
+                        r.Id,
+                        r.Review1,
+                        r.Rate,
+                        r.CreatedAt,
+                        r.UpdatedAt
+                    })
+                    .FirstOrDefaultAsync() : null;
+
+                var taxiDetails = taxies.FirstOrDefault(t => t.Id == bd.TaxiId);
+
+                return new
+                {
+                    bd.BookingId,
+                    bd.Status,
+                    TaxiDetails = taxiDetails,
+                    ReviewDetails = reviewDetails
+                };
             }).ToList();
+
+            // Ensure that all tasks are awaited before continuing.
+            var bookingDetailListWithReviews = await Task.WhenAll(bookingDetailList);
 
             var response = new
             {
@@ -125,7 +146,7 @@ namespace taxi_api.Controllers.UserController
                     booking.EndAt,
                     booking.Count,
                     booking.Price,
-                    BookingDetails = bookingDetailList,
+                    BookingDetails = bookingDetailListWithReviews,
                     booking.Customer.Name,
                     Phone = maskedPhone,
                     ArivalDetails = new
@@ -142,6 +163,7 @@ namespace taxi_api.Controllers.UserController
                 },
                 message = "Success"
             };
+
             return Ok(response);
         }
 

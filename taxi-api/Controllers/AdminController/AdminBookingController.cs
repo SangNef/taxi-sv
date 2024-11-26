@@ -448,7 +448,7 @@ namespace taxi_api.Controllers.AdminController
                     message = "Booking canceled and relevant details updated successfully."
                 });
             }
-           
+
         [HttpGet("get-booking-by-code")]
         public async Task<IActionResult> GetBookingByCode([FromQuery] string code)
         {
@@ -495,8 +495,42 @@ namespace taxi_api.Controllers.AdminController
                 .ThenInclude(d => d.Province)
                 .FirstOrDefaultAsync();
 
+            // Lấy các booking details
+            var bookingDetails = booking.BookingDetails.Select(bd => new
+            {
+                bd.BookingId,
+                bd.Status,
+                TaxiDetails = new
+                {
+                    bd.Taxi?.Id,
+                    bd.Taxi?.DriverId,
+                    bd.Taxi?.Name,
+                    bd.Taxi?.LicensePlate,
+                    bd.Taxi?.Seat,
+                    bd.Taxi?.InUse,
+                    bd.Taxi?.CreatedAt,
+                    bd.Taxi?.UpdatedAt,
+                    bd.Taxi?.DeletedAt
+                },
+                ReviewDetails = bd.Status == "4" ? new
+                {
+                    // Nếu trạng thái là 4, lấy thông tin review
+                    Review = _context.Reviews
+                        .Where(r => r.BookingDetailId == bd.Id)
+                        .Select(r => new
+                        {
+                            r.Id,
+                            r.Review1,
+                            r.Rate,
+                            r.CreatedAt,
+                            r.UpdatedAt
+                        })
+                        .FirstOrDefault()
+                } : null // Nếu trạng thái không phải là 4, không trả về review
+            });
+
             // Tạo response cho booking
-            var bookingDetails = new
+            var bookingDetailsResponse = new
             {
                 BookingId = booking.Id,
                 Code = booking.Code,
@@ -523,29 +557,13 @@ namespace taxi_api.Controllers.AdminController
                         ProvinceName = dropOffWard?.District?.Province?.Name,
                     }
                 },
-                Bookingdetail = booking.BookingDetails.Select(bd => new
-                {
-                    bd.BookingId,
-                    bd.Status,
-                    TaxiDetails = new
-                    {
-                        bd.Taxi?.Id,
-                        bd.Taxi?.DriverId,
-                        bd.Taxi?.Name,
-                        bd.Taxi?.LicensePlate,
-                        bd.Taxi?.Seat,
-                        bd.Taxi?.InUse,
-                        bd.Taxi?.CreatedAt,
-                        bd.Taxi?.UpdatedAt,
-                        bd.Taxi?.DeletedAt
-                    }
-                })
+                BookingDetails = bookingDetails
             };
 
             return Ok(new
             {
                 code = CommonErrorCodes.Success,
-                data = bookingDetails,
+                data = bookingDetailsResponse,
                 message = "Successfully retrieved the booking details."
             });
         }
