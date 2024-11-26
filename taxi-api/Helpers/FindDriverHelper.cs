@@ -12,7 +12,7 @@ namespace taxi_api.Helpers
         {
             // Lấy thông tin booking
             var booking = await context.Bookings
-                .Include(b => b.Arival) // Bao gồm dữ liệu Arival để lấy Type và dropOffId
+                .Include(b => b.Arival)
                 .FirstOrDefaultAsync(b => b.Id == bookingId);
 
             if (booking == null || booking.Arival == null)
@@ -23,9 +23,8 @@ namespace taxi_api.Helpers
             var bookingStartDate = booking.StartAt;
             var bookingCount = booking.Count;
             var dropOffId = booking.Arival.DropOffId;
-            var type = booking.Arival.Type; // Lấy Type từ Arival
+            var type = booking.Arival.Type; 
 
-            // Bước 1: Lấy danh sách tài xế có xe đang sử dụng và không trùng inviteId
             var drivers = await context.Drivers
                 .Include(d => d.Taxies)
                 .Where(d => d.DeletedAt == null && d.Taxies.Any(t => t.InUse == true) && d.Id != booking.InviteId)
@@ -33,12 +32,11 @@ namespace taxi_api.Helpers
 
             if (!drivers.Any())
             {
-                return null; // Không tìm thấy tài xế phù hợp
+                return null;
             }
 
             var validDrivers = new List<Driver>();
 
-            // Bước 2: Lọc tài xế dựa trên chuyến đi tương tự và số ghế
             foreach (var driver in drivers)
             {
                 var taxi = driver.Taxies.FirstOrDefault();
@@ -48,17 +46,15 @@ namespace taxi_api.Helpers
                 }
                 if (taxi != null)
                 {
-                    // Tính tổng số khách đã đặt với tài xế này trong ngày, cùng dropOffId và Type
                     var totalBookings = await context.BookingDetails
                         .Include(bd => bd.Booking)
                         .Where(bd => bd.TaxiId == taxi.Id &&
                                      bd.Booking.StartAt == bookingStartDate &&
                                      bd.Booking.Arival != null &&
                                      bd.Booking.Arival.DropOffId == dropOffId &&
-                                     bd.Booking.Arival.Type == type) // Kiểm tra điều kiện type và dropOffId
+                                     bd.Booking.Arival.Type == type) 
                         .SumAsync(bd => bd.Booking.Count);
 
-                    // Kiểm tra nếu tổng số khách <= số ghế của taxi
                     if (totalBookings + bookingCount <= taxi.Seat)
                     {
                         validDrivers.Add(driver);
@@ -92,21 +88,19 @@ namespace taxi_api.Helpers
                 return null;
             }
 
-            // Chọn ngẫu nhiên một tài xế từ danh sách hợp lệ
             var selectedDriver = validDrivers[new Random().Next(validDrivers.Count)];
             var selectedTaxi = selectedDriver.Taxies.FirstOrDefault();
 
             if (selectedTaxi != null)
             {
-                // Lưu thông tin vào BookingDetail với commission từ tài xế
                 var bookingDetail = new BookingDetail
                 {
                     BookingId = bookingId,
                     TaxiId = selectedTaxi.Id,
-                    Status = "1", // Trạng thái mới
+                    Status = "1", 
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    Commission = selectedDriver.Commission // Thêm commission từ tài xế được chọn
+                    Commission = selectedDriver.Commission 
                 };
 
                 await context.BookingDetails.AddAsync(bookingDetail);
@@ -117,7 +111,7 @@ namespace taxi_api.Helpers
                     DriverId = selectedDriver.Id,
                     Title = "Have a new trip",
                     Content = $"A new trip has been assigned to you. Start time: {booking.StartAt}. Please check and confirm.",
-                    Navigate = $"/booking/{booking.Id}",
+                    Navigate = $"{booking.Id}",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     IsRead = false
@@ -126,7 +120,6 @@ namespace taxi_api.Helpers
                 await context.SaveChangesAsync();
 
                 return selectedDriver;
-
             }
 
             return null;

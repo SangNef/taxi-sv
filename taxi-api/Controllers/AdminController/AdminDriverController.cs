@@ -49,6 +49,7 @@ namespace taxi_api.Controllers.AdminController
             var drivers = query
                           .Skip((page - 1) * pageSize)
                           .Take(pageSize)
+                          .OrderByDescending(b => b.CreatedAt) 
                           .GroupJoin(
                               _context.Taxies.Where(t => t.InUse == true),
                               driver => driver.Id,

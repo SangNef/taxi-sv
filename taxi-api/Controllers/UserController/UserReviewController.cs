@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace taxi_api.Controllers.UserController
 {
-    [Route("api/[controller]")]
+    [Route("api/user/reviews")]
     [ApiController]
     public class UserReviewController : ControllerBase
     {

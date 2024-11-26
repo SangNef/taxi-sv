@@ -31,6 +31,7 @@ namespace taxi_api.Controllers
 
             var terms = await query
                 .Where(t => t.DeletedAt == null)
+                .OrderByDescending(b => b.CreatedAt) 
                 .OrderBy(t => t.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)

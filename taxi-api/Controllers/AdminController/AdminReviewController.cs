@@ -25,7 +25,8 @@ namespace taxi_api.Controllers.AdminController
                 .ThenInclude(b => b.Customer)
                 .Include(r => r.BookingDetail)
                 .ThenInclude(bd => bd.Taxi)
-                .ThenInclude(t => t.Driver) // Thêm Include để lấy thông tin tài xế
+                .ThenInclude(t => t.Driver)
+                .OrderByDescending(b => b.CreatedAt) 
                 .AsQueryable();
 
             // Tìm kiếm theo booking code (nếu có)

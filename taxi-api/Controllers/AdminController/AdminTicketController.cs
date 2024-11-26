@@ -29,6 +29,7 @@ namespace taxi_api.Controllers.AdminController
                 .Include(t => t.Booking)
                 .ThenInclude(b => b.Arival)
                 .Include(t => t.Booking.Customer)
+                .OrderByDescending(b => b.CreatedAt) 
                 .AsQueryable();
 
             // Tìm kiếm theo BookingCode

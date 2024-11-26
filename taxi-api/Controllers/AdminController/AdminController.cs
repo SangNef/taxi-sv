@@ -192,7 +192,8 @@ namespace taxi_api.Controllers.AdminController
             var totalAdmins = query.Count(); 
             var admins = query
                          .Skip((page - 1) * pageSize) 
-                         .Take(pageSize) 
+                         .Take(pageSize)
+                         .OrderByDescending(b => b.CreatedAt) 
                          .ToList();
             return Ok(new
             {

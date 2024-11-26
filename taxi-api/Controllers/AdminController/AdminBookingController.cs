@@ -42,6 +42,7 @@ namespace taxi_api.Controllers.AdminController
                 .Include(b => b.Arival)
                 .Include(b => b.BookingDetails)
                 .ThenInclude(bd => bd.Taxi)
+                .OrderByDescending(b => b.CreatedAt) 
                 .AsQueryable();
 
             // Lọc theo mã booking nếu có
@@ -179,8 +180,6 @@ namespace taxi_api.Controllers.AdminController
                 totalPages
             });
         }
-
-
 
         [HttpPost("store")]
         public async Task<IActionResult> Store([FromBody] BookingRequestDto request)
@@ -347,7 +346,7 @@ namespace taxi_api.Controllers.AdminController
                 Code = "XG" + DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 CustomerId = customer.Id,
                 ArivalId = arival.Id,
-                StartAt = DateOnly.FromDateTime(DateTime.UtcNow),
+                StartAt = request.StartAt,
                 EndAt = null,
                 Count = request.Count,
                 Price = arival.Price,

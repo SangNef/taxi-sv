@@ -52,8 +52,8 @@ namespace taxi_api.Controllers.AdminController
 
             // Get the data for the requested page
             var provinces = query
-                .Skip((page - 1) * pageSize)  // Skip the records of previous pages
-                .Take(pageSize)  // Take the number of records defined by pageSize
+                .Skip((page - 1) * pageSize) 
+                .Take(pageSize)  
                 .Select(p => new
                 {
                     p.Id,

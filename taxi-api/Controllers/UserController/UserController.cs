@@ -103,15 +103,16 @@ namespace taxi_api.Controllers.UserController
 
             var taxies = await _context.Taxies.ToListAsync();
 
-            var driverAssignments = booking.BookingDetails
-                .Select(bd => new
-                {
-                    bd.BookingId,
-                    bd.Status,
-                    bd.TaxiId,
-                    TaxiDetails = taxies.FirstOrDefault(t => t.Id == bd.TaxiId)
-                })
+            var bookingDetails = booking.BookingDetails
+                .OrderByDescending(bd => bd.UpdatedAt) 
                 .ToList();
+
+            var bookingDetailList = bookingDetails.Select(bd => new
+            {
+                bd.BookingId,
+                bd.Status,
+                TaxiDetails = taxies.FirstOrDefault(t => t.Id == bd.TaxiId)
+            }).ToList();
 
             var response = new
             {
@@ -124,11 +125,9 @@ namespace taxi_api.Controllers.UserController
                     booking.EndAt,
                     booking.Count,
                     booking.Price,
-                    Customer = new
-                    {
-                        booking.Customer.Name,
-                        Phone = maskedPhone
-                    },
+                    BookingDetails = bookingDetailList,
+                    booking.Customer.Name,
+                    Phone = maskedPhone,
                     ArivalDetails = new
                     {
                         booking.Arival.PickUpAddress,
@@ -140,12 +139,12 @@ namespace taxi_api.Controllers.UserController
                         DropOffId = booking.Arival.DropOffId,
                         DropOffDetails = dropOffWard
                     },
-                    DriverAssignments = driverAssignments
                 },
                 message = "Success"
             };
             return Ok(response);
         }
+
         private string MaskPhoneNumber(string phoneNumber)
         {
             if (string.IsNullOrEmpty(phoneNumber) || phoneNumber.Length < 7)

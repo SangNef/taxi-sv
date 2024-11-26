@@ -31,7 +31,7 @@ namespace taxi_api.Controllers.AdminController
             var totalRevenues = await query.CountAsync();
 
             var revenues = await query
-                .OrderByDescending(r => r.CreatedAt) 
+                .OrderByDescending(r => r.CreatedAt)
                 .Skip((page - 1) * pageSize) 
                 .Take(pageSize)
                 .Select(r => new
