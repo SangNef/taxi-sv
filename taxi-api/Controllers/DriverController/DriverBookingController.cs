@@ -165,109 +165,111 @@ namespace taxi_api.Controllers.DriverController
                 return Ok(new { message = "BookingDetails not found." });
             }
 
-            // Tìm taxi liên quan đến Booking
+            // Lấy ra BookingDetail có UpdatedAt mới nhất
+            var latestBookingDetail = bookingDetails
+                .OrderByDescending(bd => bd.UpdatedAt)
+                .FirstOrDefault();
+
+            if (latestBookingDetail == null)
+            {
+                return Ok(new { message = "No valid BookingDetail found." });
+            }
+
             var taxi = await _context.Taxies
-                .FirstOrDefaultAsync(t => t.Id == bookingDetails.First().TaxiId);
+                .FirstOrDefaultAsync(t => t.Id == latestBookingDetail.TaxiId);
 
             if (taxi == null)
             {
                 return Ok(new { message = "Taxi not found." });
             }
 
-            // Tìm tài xế liên quan đến taxi
             var driver = await _context.Drivers.FindAsync(taxi.DriverId);
             if (driver == null)
             {
                 return Ok(new { message = "Driver not found." });
             }
 
-            // Thay đổi trạng thái cho từng BookingDetail
-            foreach (var bookingDetail in bookingDetails)
+            if (latestBookingDetail.Status == "2")
             {
-                if (bookingDetail.Status == "2")
+                latestBookingDetail.Status = "3";
+            }
+            else if (latestBookingDetail.Status == "3")
+            {
+                if (booking.InviteId != 0)
                 {
-                    bookingDetail.Status = "3";
-                }
-                else if (bookingDetail.Status == "3")
-                {
-                   
-                    if (booking.InviteId != 0)
+                    var driverInvite = await _context.Drivers.FindAsync(booking.InviteId);
+
+                    if (driverInvite == null)
                     {
-                        var driverInvite = await _context.Drivers.FindAsync(booking.InviteId);
-
-                        if (driverInvite == null)
-                        {
-                            return NotFound(new { message = "Invited driver not found." });
-                        }
-
-                        decimal commissionRate = driver.Commission.GetValueOrDefault(0);
-                        decimal bookingPrice = booking.Price.GetValueOrDefault(0);
-                        decimal deduction = (bookingPrice * commissionRate) / 100;
-
-                        var config = await _context.Configs.FirstOrDefaultAsync(c => c.ConfigKey == "default_royalty");
-                        if (config == null || !decimal.TryParse(config.Value, out decimal defaultRoyalty))
-                        {
-                            return NotFound(new { message = "Config default_royalty not found or invalid." });
-                        }
-
-                        decimal result2 = deduction * defaultRoyalty / 100;
-                        driverInvite.Price += result2;
-
-                        bookingDetail.Status = "4";
-                        booking.EndAt = DateTime.UtcNow;
-
-                        var revenue = new Revenue
-                        {
-                            Type = false,
-                            Amount = - result2,
-                            Note = $"You have been deducted -{result2}$ for driver creates trip have code booking #{booking.Code}"
-                        };
-                        await _context.Revenues.AddAsync(revenue);
-                        await _context.SaveChangesAsync();
-
-                        var newWallet = new Wallet
-                        {
-                            DriverId = driverInvite.Id,
-                            Type = "Successfully received paid Royalty.",
-                            Price = result2,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        await _context.Wallets.AddAsync(newWallet);
-                        await _context.SaveChangesAsync();
-
-                        var newNotificationAdmin = new AdminNotification
-                        {
-                            IsRead = false,
-                            Title = $"Driver {driver.Fullname} complete booking #{booking.Code}",
-                            Content = $"Driver {driver.Fullname} has completed booking #{booking.Code} and deducted {result2} for the driver who created the trip",
-                            Navigate = $"/booking/{booking.Code}"
-                        };
-                        await _context.AdminNotifications.AddAsync(newNotificationAdmin);
+                        return NotFound(new { message = "Invited driver not found." });
                     }
-                    else
+
+                    decimal commissionRate = driver.Commission.GetValueOrDefault(0);
+                    decimal bookingPrice = booking.Price.GetValueOrDefault(0);
+                    decimal deduction = (bookingPrice * commissionRate) / 100;
+
+                    var config = await _context.Configs.FirstOrDefaultAsync(c => c.ConfigKey == "default_royalty");
+                    if (config == null || !decimal.TryParse(config.Value, out decimal defaultRoyalty))
                     {
-                        bookingDetail.Status = "4";
-                        booking.EndAt = DateTime.UtcNow;
-
-                        var newNotificationAdmin = new AdminNotification
-                        {
-                            IsRead = false,
-                            Title = $"Driver {driver.Fullname} complete booking #{booking.Code}",
-                            Content = $"Driver {driver.Fullname} has completed booking #{booking.Code}",
-                            Navigate = $"/booking/{booking.Code}"
-                        };
-                        await _context.AdminNotifications.AddAsync(newNotificationAdmin);
-                        await _context.SaveChangesAsync();
-
+                        return NotFound(new { message = "Config default_royalty not found or invalid." });
                     }
+
+                    decimal result2 = deduction * defaultRoyalty / 100;
+                    driverInvite.Price += result2;
+
+                    latestBookingDetail.Status = "4";
+                    booking.EndAt = DateTime.UtcNow;
+
+                    var revenue = new Revenue
+                    {
+                        Type = false,
+                        Amount = -result2,
+                        Note = $"You have been deducted -{result2}$ for driver creating trip with booking code #{booking.Code}"
+                    };
+                    await _context.Revenues.AddAsync(revenue);
+                    await _context.SaveChangesAsync();
+
+                    var newWallet = new Wallet
+                    {
+                        DriverId = driverInvite.Id,
+                        Type = "Successfully received paid Royalty.",
+                        Price = result2,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _context.Wallets.AddAsync(newWallet);
+                    await _context.SaveChangesAsync();
+
+                    var newNotificationAdmin = new AdminNotification
+                    {
+                        IsRead = false,
+                        Title = $"Driver {driver.Fullname} complete booking #{booking.Code}",
+                        Content = $"Driver {driver.Fullname} has completed booking #{booking.Code} and deducted {result2} for the driver who created the trip",
+                        Navigate = $"/booking/{booking.Code}"
+                    };
+                    await _context.AdminNotifications.AddAsync(newNotificationAdmin);
                 }
                 else
                 {
-                    return Ok(new { message = "Booking is ready successfully" });
-                }
+                    latestBookingDetail.Status = "4";
+                    booking.EndAt = DateTime.UtcNow;
 
-                bookingDetail.UpdatedAt = DateTime.UtcNow;
+                    var newNotificationAdmin = new AdminNotification
+                    {
+                        IsRead = false,
+                        Title = $"Driver {driver.Fullname} complete booking #{booking.Code}",
+                        Content = $"Driver {driver.Fullname} has completed booking #{booking.Code}",
+                        Navigate = $"/booking/{booking.Code}"
+                    };
+                    await _context.AdminNotifications.AddAsync(newNotificationAdmin);
+                    await _context.SaveChangesAsync();
+                }
             }
+            else
+            {
+                return Ok(new { message = "Booking is ready successfully" });
+            }
+
+            latestBookingDetail.UpdatedAt = DateTime.UtcNow;
 
             booking.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
@@ -275,7 +277,7 @@ namespace taxi_api.Controllers.DriverController
             return Ok(new
             {
                 message = "Booking details status updated successfully.",
-                endAt = bookingDetails.Any(bd => bd.Status == "4") ? booking.EndAt : null,
+                endAt = latestBookingDetail.Status == "4" ? booking.EndAt : null,
                 driverPoint = driver.Price,
                 bookingDetailStatuses = bookingDetails.Select(bd => new
                 {
@@ -284,6 +286,7 @@ namespace taxi_api.Controllers.DriverController
                 })
             });
         }
+
         [Authorize]
         [HttpGet("History-bookings")]
         public async Task<IActionResult> TripAcceptedAndDelete()
@@ -386,8 +389,10 @@ namespace taxi_api.Controllers.DriverController
                         booking.Arival.Type,
                         booking.Arival.Price,
                         PickUpId = booking.Arival.PickUpId,
+                        PickupAddress = booking.Arival.PickUpAddress,
                         PickUpDetails = pickUpWard,
                         DropOffId = booking.Arival.DropOffId,
+                        DropOffAddress = booking.Arival.DropOffAddress,
                         DropOffDetails = dropOffWard
                     },
                     TaxiDetails = new
@@ -558,7 +563,6 @@ namespace taxi_api.Controllers.DriverController
         }
        
         [Authorize]
-        [Authorize]
         [HttpPost("claim-booking")]
         public async Task<IActionResult> ClaimBooking([FromBody] DriverBookingStoreDto request)
         {
@@ -617,7 +621,7 @@ namespace taxi_api.Controllers.DriverController
             {
                 DriverId = driverId,
                 Type = "Successfully received the trip and paid commission.",
-                Price = -deduction,
+                Price = - deduction,
                 CreatedAt = DateTime.UtcNow
             };
             await _context.Wallets.AddAsync(newWallet);
@@ -630,8 +634,6 @@ namespace taxi_api.Controllers.DriverController
 
             };
             await _context.Revenues.AddAsync(revenue);
-
-
             var adminNotification = new AdminNotification
             {
                 IsRead = false,
@@ -1067,6 +1069,7 @@ namespace taxi_api.Controllers.DriverController
 
             var booking = await _context.Bookings
                   .Where(b => b.Id == bookingId)
+                  .Include(b => b.Customer)
                   .Include(b => b.Arival)
                   .ThenInclude(a => a.PickUp) 
                       .ThenInclude(w => w.District)
@@ -1128,7 +1131,6 @@ namespace taxi_api.Controllers.DriverController
                 })
                 .FirstOrDefaultAsync();
 
-            // Chuẩn bị thông tin trả về
             var bookingInfo = new
             {
                 BookingId = booking.Id,
@@ -1141,13 +1143,19 @@ namespace taxi_api.Controllers.DriverController
                 Count = booking.Count,
                 HasFull = booking.HasFull,
                 InviteId = booking.InviteId,
+                Status = bookingDetail.Status,
+                Commission = bookingDetail.Commission,
+                TotalPrice = bookingDetail.TotalPrice,
+
                 ArivalDetails = new
                 {
                     booking.Arival.Type,
                     booking.Arival.Price,
                     PickUpId = booking.Arival.PickUpId,
+                    PickupAddress = booking.Arival.PickUpAddress,
                     PickUpDetails = pickUpWard,
                     DropOffId = booking.Arival.DropOffId,
+                    DropOffAddress = booking.Arival.DropOffAddress,
                     DropOffDetails = dropOffWard
                 },
                 TaxiDetails = new
@@ -1157,19 +1165,9 @@ namespace taxi_api.Controllers.DriverController
                     TaxiLicensePlate = bookingDetail.Taxi.LicensePlate,
                     TaxiSeat = bookingDetail.Taxi.Seat
                 },
-                BookingDetails = booking.BookingDetails.Select(bd => new
-                {
-                    BookingDetailId = bd.Id,
-                    Status = bd.Status,
-                    Commission = bd.Commission,
-                    TotalPrice = bd.TotalPrice,
-                    CreatedAt = bd.CreatedAt
-                }).ToList()
             };
 
             return Ok(new { data = bookingInfo });
         }
-
-
     }
 }

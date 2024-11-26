@@ -179,6 +179,156 @@ namespace taxi_api.Controllers.AdminController
             });
         }
 
+        [HttpGet("get-commission")]
+        public IActionResult GetCommission()
+        {
+            var commissionConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "default_comission");
+
+            if (commissionConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Commission configuration not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Commission configuration retrieved successfully.",
+                data = new
+                {
+                    commissionConfig.ConfigKey,
+                    commissionConfig.Value,
+                    commissionConfig.CreatedAt,
+                    commissionConfig.UpdatedAt,
+                    commissionConfig.DeletedAt
+                }
+            });
+        }
+
+        [HttpGet("get-royalty")]
+        public IActionResult GetRoyalty()
+        {
+            var royaltyConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "default_royalty");
+
+            if (royaltyConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Royalty configuration not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Royalty configuration retrieved successfully.",
+                data = new
+                {
+                    royaltyConfig.ConfigKey,
+                    royaltyConfig.Value,
+                    royaltyConfig.CreatedAt,
+                    royaltyConfig.UpdatedAt,
+                    royaltyConfig.DeletedAt
+                }
+            });
+        }
+
+        [HttpGet("get-refund-3-day")]
+        public IActionResult GetRefund3Day()
+        {
+            var refundConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "refund_3_day");
+
+            if (refundConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Refund 3-day configuration not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Refund 3-day configuration retrieved successfully.",
+                data = new
+                {
+                    refundConfig.ConfigKey,
+                    refundConfig.Value,
+                    refundConfig.CreatedAt,
+                    refundConfig.UpdatedAt,
+                    refundConfig.DeletedAt
+                }
+            });
+        }
+
+        [HttpGet("get-refund-1-day")]
+        public IActionResult GetRefund1Day()
+        {
+            var refundConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "refund_1_day");
+
+            if (refundConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Refund 1-day configuration not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Refund 1-day configuration retrieved successfully.",
+                data = new
+                {
+                    refundConfig.ConfigKey,
+                    refundConfig.Value,
+                    refundConfig.CreatedAt,
+                    refundConfig.UpdatedAt,
+                    refundConfig.DeletedAt
+                }
+            });
+        }
+
+        [HttpGet("get-refund-overdue")]
+        public IActionResult GetRefundOverdue()
+        {
+            var refundConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "refund_overdue");
+
+            if (refundConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Refund overdue configuration not found."
+                });
+            }
+
+            return Ok(new
+            {
+                code = CommonErrorCodes.Success,
+                message = "Refund overdue configuration retrieved successfully.",
+                data = new
+                {
+                    refundConfig.ConfigKey,
+                    refundConfig.Value,
+                    refundConfig.CreatedAt,
+                    refundConfig.UpdatedAt,
+                    refundConfig.DeletedAt
+                }
+            });
+        }
+
         [HttpPut("edit-airport-price")]
         public IActionResult EditAirportPrice([FromBody] ConfigDto configDto)
         {
@@ -431,6 +581,249 @@ namespace taxi_api.Controllers.AdminController
                 {
                     code = CommonErrorCodes.ServerError,
                     message = $"An error occurred while updating the homescreen banner: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpPut("edit-commission")]
+        public IActionResult EditCommission([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Commission value must be provided."
+                });
+            }
+
+            var commissionConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "default_comission");
+
+            if (commissionConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Commission configuration not found."
+                });
+            }
+
+            commissionConfig.Value = configDto.Value;
+            commissionConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Commission updated successfully.",
+                    data = new
+                    {
+                        commission = commissionConfig.Value
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating commission: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpPut("edit-royalty")]
+        public IActionResult EditRoyalty([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Royalty value must be provided."
+                });
+            }
+
+            var royaltyConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "default_royalty");
+
+            if (royaltyConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Royalty configuration not found."
+                });
+            }
+
+            royaltyConfig.Value = configDto.Value;
+            royaltyConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Royalty updated successfully.",
+                    data = new
+                    {
+                        royalty = royaltyConfig.Value
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating royalty: {ex.Message}"
+                });
+            }
+        }
+        [HttpPut("edit-refund-3-day")]
+        public IActionResult EditRefund3Day([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Refund 3-day value must be provided."
+                });
+            }
+
+            var refund3DayConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "refund_3_day");
+
+            if (refund3DayConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Refund 3-day configuration not found."
+                });
+            }
+
+            // Cập nhật refund 3-day
+            refund3DayConfig.Value = configDto.Value;
+            refund3DayConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Refund 3-day configuration updated successfully.",
+                    data = new { refund3Day = refund3DayConfig.Value }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating the refund 3-day configuration: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpPut("edit-refund-1-day")]
+        public IActionResult EditRefund1Day([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Refund 1-day value must be provided."
+                });
+            }
+
+            var refund1DayConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "refund_1_day");
+
+            if (refund1DayConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Refund 1-day configuration not found."
+                });
+            }
+
+            // Cập nhật refund 1-day
+            refund1DayConfig.Value = configDto.Value;
+            refund1DayConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Refund 1-day configuration updated successfully.",
+                    data = new { refund1Day = refund1DayConfig.Value }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating the refund 1-day configuration: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpPut("edit-refund-overdue")]
+        public IActionResult EditRefundOverdue([FromBody] ConfigDto configDto)
+        {
+            if (string.IsNullOrEmpty(configDto.Value))
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.InvalidData,
+                    message = "Refund overdue value must be provided."
+                });
+            }
+
+            var refundOverdueConfig = _context.Configs
+                .FirstOrDefault(c => c.ConfigKey == "refund_overdue");
+
+            if (refundOverdueConfig == null)
+            {
+                return Ok(new
+                {
+                    code = CommonErrorCodes.NotFound,
+                    message = "Refund overdue configuration not found."
+                });
+            }
+
+            // Cập nhật refund overdue
+            refundOverdueConfig.Value = configDto.Value;
+            refundOverdueConfig.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                _context.SaveChanges();
+                return Ok(new
+                {
+                    code = CommonErrorCodes.Success,
+                    message = "Refund overdue configuration updated successfully.",
+                    data = new { refundOverdue = refundOverdueConfig.Value }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    code = CommonErrorCodes.ServerError,
+                    message = $"An error occurred while updating the refund overdue configuration: {ex.Message}"
                 });
             }
         }

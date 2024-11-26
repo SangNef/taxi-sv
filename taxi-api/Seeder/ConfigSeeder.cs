@@ -68,6 +68,30 @@ public class ConfigSeeder
                         Value = "https://res.cloudinary.com/dx2o9ki2g/image/upload/v1732002062/cum5i1alrfrpgkrqfckb.webp", 
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
+                    },
+                     new Config
+                    {
+                        ConfigKey = "refund_3_day",
+                        Name = "refund_3_day",
+                        Value = "80",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    },
+                    new Config
+                    {
+                        ConfigKey = "refund_1_day",
+                        Name = "refund_1_day",
+                        Value = "50",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    },
+                    new Config
+                    {
+                        ConfigKey = "refund_overdue",
+                        Name = "refund_overdue",
+                        Value = "0",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     }
                 };
 

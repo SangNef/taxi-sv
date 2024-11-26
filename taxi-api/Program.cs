@@ -116,7 +116,7 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    PageSeeder.Initialize(services);
+    TermSeeder.Initialize(services);
     SeederAdmin.Initialize(services); 
     ConfigSeeder.Initialize(services);
 }

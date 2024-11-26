@@ -168,11 +168,6 @@ namespace taxi_api.Controllers.AdminController
                 DropOffDistrict = districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival?.DropOffId)?.DistrictId)?.Name,
                 DropOffProvince = provinces.FirstOrDefault(p => p.Id == districts.FirstOrDefault(d => d.Id == wards.FirstOrDefault(w => w.Id == b.Arival?.DropOffId)?.DistrictId)?.ProvinceId)?.Name
             }).ToList();
-
-
-
-
-
             // Trả về dữ liệu
             return Ok(new
             {

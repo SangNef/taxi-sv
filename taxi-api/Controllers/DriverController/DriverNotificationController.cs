@@ -18,9 +18,8 @@ namespace taxi_api.Controllers.DriverController
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetDriverNotifications()
+        public async Task<IActionResult> GetDriverNotifications([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            // Lấy DriverId từ token đã được xác thực
             var driverIdClaim = User.Claims.FirstOrDefault(c => c.Type == "DriverId");
             if (driverIdClaim == null)
             {
@@ -40,10 +39,17 @@ namespace taxi_api.Controllers.DriverController
                 });
             }
 
-            // Truy vấn thông báo từ cơ sở dữ liệu
+            page = Math.Max(page, 1);
+            pageSize = Math.Max(pageSize, 1); 
+
+            var totalNotifications = await _context.Notifications
+                .CountAsync(n => n.DriverId == driverId && n.DeletedAt == null);
+
             var notifications = await _context.Notifications
                 .Where(n => n.DriverId == driverId && n.DeletedAt == null)
                 .OrderByDescending(n => n.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(n => new
                 {
                     n.Id,
@@ -59,9 +65,17 @@ namespace taxi_api.Controllers.DriverController
             {
                 code = "Success",
                 message = "Notifications retrieved successfully.",
-                data = notifications
+                data = notifications,
+                pagination = new
+                {
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalItems = totalNotifications,
+                    totalPages = (int)Math.Ceiling(totalNotifications / (double)pageSize)
+                }
             });
         }
+
 
         [HttpPut("read/{id}")]
         public async Task<IActionResult> MarkNotificationAsRead(int id)
@@ -148,8 +162,5 @@ namespace taxi_api.Controllers.DriverController
                 message = $"{unreadNotifications.Count} notifications marked as read successfully."
             });
         }
-
-
-
     }
 }

@@ -117,6 +117,7 @@ namespace taxi_api.Helpers
                     DriverId = selectedDriver.Id,
                     Title = "Have a new trip",
                     Content = $"A new trip has been assigned to you. Start time: {booking.StartAt}. Please check and confirm.",
+                    Navigate = $"/booking/{booking.Id}",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     IsRead = false

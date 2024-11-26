@@ -35,10 +35,6 @@ public partial class TaxiContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
-    public virtual DbSet<Page> Pages { get; set; }
-
-    public virtual DbSet<PageContent> PageContents { get; set; }
-
     public virtual DbSet<PaymentHistory> PaymentHistories { get; set; }
 
     public virtual DbSet<Province> Provinces { get; set; }
@@ -48,6 +44,8 @@ public partial class TaxiContext : DbContext
     public virtual DbSet<Review> Reviews { get; set; }
 
     public virtual DbSet<Taxy> Taxies { get; set; }
+
+    public virtual DbSet<Term> Terms { get; set; }
 
     public virtual DbSet<Ticket> Tickets { get; set; }
 
@@ -386,59 +384,6 @@ public partial class TaxiContext : DbContext
                 .HasConstraintName("FK__Notificat__drive__02084FDA");
         });
 
-        modelBuilder.Entity<Page>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__Pages__3213E83FFC1F62E1");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("created_at");
-            entity.Property(e => e.DeletedAt)
-                .HasColumnType("datetime")
-                .HasColumnName("deleted_at");
-            entity.Property(e => e.Slug)
-                .HasMaxLength(255)
-                .HasColumnName("slug");
-            entity.Property(e => e.Title)
-                .HasMaxLength(255)
-                .HasColumnName("title");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("updated_at");
-        });
-
-        modelBuilder.Entity<PageContent>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__PageCont__3213E83F2262E571");
-
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Content)
-                .HasColumnType("text")
-                .HasColumnName("content");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("created_at");
-            entity.Property(e => e.DeletedAt)
-                .HasColumnType("datetime")
-                .HasColumnName("deleted_at");
-            entity.Property(e => e.PageId).HasColumnName("page_id");
-            entity.Property(e => e.SubTitle)
-                .HasMaxLength(255)
-                .HasColumnName("sub_title");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("updated_at");
-
-            entity.HasOne(d => d.Page).WithMany(p => p.PageContents)
-                .HasForeignKey(d => d.PageId)
-                .HasConstraintName("FK__PageConte__page___787EE5A0");
-        });
-
         modelBuilder.Entity<PaymentHistory>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__PaymentH__3213E83F31FA01C9");
@@ -579,6 +524,39 @@ public partial class TaxiContext : DbContext
             entity.HasOne(d => d.Driver).WithMany(p => p.Taxies)
                 .HasForeignKey(d => d.DriverId)
                 .HasConstraintName("FK__Taxies__driver_i__440B1D61");
+        });
+
+        modelBuilder.Entity<Term>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Terms__3213E83FC9B55D48");
+
+            entity.HasIndex(e => e.Slug, "UQ__Terms__32DD1E4CE6F93DE9").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Content).HasColumnName("content");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("deleted_at");
+            entity.Property(e => e.Slug)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("slug");
+            entity.Property(e => e.Title)
+                .HasMaxLength(255)
+                .IsUnicode(false)
+                .HasColumnName("title");
+            entity.Property(e => e.Type)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("type");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<Ticket>(entity =>

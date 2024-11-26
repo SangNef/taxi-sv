@@ -201,6 +201,7 @@ namespace taxi_api.Controllers.DriverController
                         driver.Fullname,
                         driver.Phone,
                         driver.Price,
+                        driver.Commission,
                         driver.CreatedAt,
                         driver.UpdatedAt,
                         TaxiInfo = taxies.Select(taxi => new
